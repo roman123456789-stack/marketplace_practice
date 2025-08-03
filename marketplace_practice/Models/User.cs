@@ -1,29 +1,25 @@
-﻿namespace marketplace_practice.Models
+﻿using marketplace_practice.Models.Enums;
+
+namespace marketplace_practice.Models
 {
     public class User
     {
-        public int Id { get; set; }
-
+        public long Id { get; set; }
         public string FirstName { get; set; }
-
         public string LastName { get; set; }
-
         public string Email { get; set; }
-
-        public string Role { get; set; }
-
-        public string RefreshToken { get; set; }
-
+        public Role Role { get; set; }
         public DateTime? ExpiresAt { get; set; }
-
         public string PasswordHash { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsVerified { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
-        public bool IsActive { get; set; } = true;
-
-        public bool IsVerified { get; set; } = false;
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public ICollection<Product> Products { get; set; }
+        public ICollection<FavoriteProduct> FavoriteProducts { get; set; }
+        public LoyaltyAccount LoyaltyAccount { get; set; }
+        public ICollection<LoyaltyTransaction> LoyaltyTransactions { get; set; }
+        public ICollection<Order> Orders { get; set; }
     }
 }
