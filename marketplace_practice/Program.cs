@@ -1,7 +1,9 @@
 using marketplace_practice;
+using marketplace_practice.Models;
 using marketplace_practice.Services;
 using marketplace_practice.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -40,6 +42,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+builder.Services.AddIdentity<User, Role>(options =>
+{
+    // Настройки пароля потом нужно изменить
+    options.Password.RequiredLength = 4; // Минимальная длина
+    options.Password.RequireDigit = false; // Требуется хотя бы одна цифра
+    options.Password.RequireLowercase = false; // Требуется строчная буква
+    options.Password.RequireUppercase = false; // Требуется заглавная буква
+    options.Password.RequireNonAlphanumeric = false; // Требуется спецсимвол
+    options.Password.RequiredUniqueChars = 1; // Уникальные символы
+
+    options.User.RequireUniqueEmail = true; // Уникальный email
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
 
 var app = builder.Build();
 

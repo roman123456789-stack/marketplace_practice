@@ -17,7 +17,7 @@ namespace marketplace_practice.Services
             _config = config;
         }
 
-        public AccessTokenResult GenerateAccessToken(int userId, string email, string role)
+        public AccessTokenResult GenerateAccessToken(long userId, string email, string role)
         {
             var claims = new[]
             {

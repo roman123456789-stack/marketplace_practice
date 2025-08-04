@@ -24,9 +24,9 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create([FromBody] CreateUserDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
-            CreateUserResultDto result = _userService.CreateUser(dto);
+            CreateUserResultDto result = await _userService.CreateUserAsync(dto);
             return Ok(result);
         }
 

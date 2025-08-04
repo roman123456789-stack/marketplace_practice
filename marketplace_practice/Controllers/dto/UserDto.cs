@@ -29,12 +29,6 @@ namespace marketplace_practice.Controllers.dto
             PasswordHash = user.PasswordHash;
             IsActive = user.IsActive;
             IsVerified = user.IsVerified;
-            Roles = user.Roles.Select(r => new RoleDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                Description = r.Description
-            }).ToList();
         }
     }
 }

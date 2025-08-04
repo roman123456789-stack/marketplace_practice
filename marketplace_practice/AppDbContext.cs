@@ -1,10 +1,12 @@
 ﻿using marketplace_practice.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace marketplace_practice
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<User, Role, long>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -17,8 +19,6 @@ namespace marketplace_practice
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Role> Roles { get; set; } 
         public DbSet<LoyaltyAccount> LoyaltyAccounts { get; set; }
         public DbSet<LoyaltyTransaction> LoyaltyTransactions { get; set; }
         public DbSet<Order> Orders { get; set; }

@@ -5,7 +5,7 @@ namespace marketplace_practice.Services.interfaces
     public interface IUserService
     {
         string GetUserById();
-        CreateUserResultDto CreateUser(CreateUserDto dto);
+        public Task<CreateUserResultDto> CreateUserAsync(CreateUserDto dto);
         string UpdateUser();
         string DeleteUser();
     }
