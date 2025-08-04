@@ -1,0 +1,40 @@
+﻿using marketplace_practice.Models;
+
+namespace marketplace_practice.Controllers.dto
+{
+    public class UserDto
+    {
+        public long Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public string RefreshToken { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public string PasswordHash { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsVerified { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+
+        public ICollection<RoleDto> Roles { get; set; } = new List<RoleDto>();
+
+        public UserDto(User user)
+        {
+            Id = user.Id;
+            FirstName = user.FirstName;
+            LastName = user.LastName;
+            Email = user.Email;
+            RefreshToken = user.RefreshToken;
+            ExpiresAt = user.ExpiresAt;
+            PasswordHash = user.PasswordHash;
+            IsActive = user.IsActive;
+            IsVerified = user.IsVerified;
+            Roles = user.Roles.Select(r => new RoleDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                Description = r.Description
+            }).ToList();
+        }
+    }
+}

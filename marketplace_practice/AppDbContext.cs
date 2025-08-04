@@ -18,6 +18,7 @@ namespace marketplace_practice
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Role> Roles { get; set; } 
         public DbSet<LoyaltyAccount> LoyaltyAccounts { get; set; }
         public DbSet<LoyaltyTransaction> LoyaltyTransactions { get; set; }
         public DbSet<Order> Orders { get; set; }

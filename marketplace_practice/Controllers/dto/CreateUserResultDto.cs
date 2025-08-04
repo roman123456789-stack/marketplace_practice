@@ -1,6 +1,4 @@
-﻿using marketplace_practice.Services.interfaces;
-
-namespace marketplace_practice.Controllers.dto
+﻿namespace marketplace_practice.Controllers.dto
 {
     public class CreateUserResultDto
     {
@@ -8,6 +6,6 @@ namespace marketplace_practice.Controllers.dto
         public DateTime ExpiresAt { get; set; }
         public string RefreshToken { get; set; } = string.Empty;
 
-        public IUser User { get; set; }
+        public UserDto User { get; set; }
     }
 }

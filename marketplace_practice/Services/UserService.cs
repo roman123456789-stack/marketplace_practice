@@ -1,6 +1,5 @@
 ﻿using marketplace_practice.Controllers.dto;
 using marketplace_practice.Models;
-using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Utils;
@@ -34,25 +33,19 @@ namespace marketplace_practice.Services
                 }
                 string passwordHash = _authUtils.HashPassword(dto.Password);
 
-                Role role;
-                switch (dto.Role.Trim())
+                var roleName = dto.Role.Trim();
+                var role = _context.Roles.FirstOrDefault(r => r.Name == roleName);
+
+                if (role == null)
                 {
-                    case "Покупатель":
-                        role = Role.Customer;
-                        break;
-                    case "Продавец":
-                        role = Role.Seller;
-                        break;
-                    default:
-                        throw new ArgumentException($"Роль '{dto.Role}' не поддерживается. Допустимые значения: Покупатель, Продавец");
+                    throw new ArgumentException($"Роль '{roleName}' не найдена. Допустимые значения: Покупатель, Продавец");
                 }
 
-                AccessTokenResult accessTokenData = _tokenService.GenerateAccessToken(123, dto.Email, dto.Role);
+                AccessTokenResult accessTokenData = _tokenService.GenerateAccessToken(123, dto.Email, roleName);
                 string refresh_token = _tokenService.GenerateRefreshToken();
                 var user = new User
                 {
                     Email = dto.Email,
-                    Role = role,
                     ExpiresAt = accessTokenData.ExpiresAt,
                     RefreshToken = refresh_token,
                     PasswordHash = passwordHash,
@@ -61,17 +54,21 @@ namespace marketplace_practice.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     FirstName = dto.FirstName ?? string.Empty,
-                    LastName = dto.LastName ?? string.Empty
+                    LastName = dto.LastName ?? string.Empty,
+                    Roles = new List<Role>()
                 };
+
+                user.Roles.Add(role);
 
                 _context.Users.Add(user);
                 _context.SaveChanges();
+
                 return new CreateUserResultDto
                 {
                     AccessToken = accessTokenData.AccessToken,
                     ExpiresAt = accessTokenData.ExpiresAt,
                     RefreshToken = refresh_token,
-                    User = user
+                    User = new UserDto(user),
                 };
             }
             catch (Exception ex)
