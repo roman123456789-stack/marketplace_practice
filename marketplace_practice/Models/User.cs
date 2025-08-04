@@ -1,14 +1,16 @@
 ﻿using marketplace_practice.Models.Enums;
+using marketplace_practice.Services.interfaces;
 
 namespace marketplace_practice.Models
 {
-    public class User
+    public class User : IUser
     {
         public long Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Email { get; set; }
         public Role Role { get; set; }
+        public string RefreshToken { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public string PasswordHash { get; set; }
         public bool IsActive { get; set; }

@@ -40,7 +40,7 @@ namespace marketplace_practice.Services
                 signingCredentials: creds);
 
             string access_token = new JwtSecurityTokenHandler().WriteToken(token);
-            DateTime expires_at = DateTime.Now.AddDays(15);
+            DateTime expires_at = DateTime.UtcNow.AddDays(15);
             return new AccessTokenResult { 
                 AccessToken = access_token,
                 ExpiresAt = expires_at,

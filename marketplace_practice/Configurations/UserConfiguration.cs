@@ -15,6 +15,7 @@ namespace marketplace_practice.Configurations
             builder.Property(u => u.LastName).HasColumnName("last_name").HasMaxLength(100);
             builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(100).IsRequired();
             builder.Property(u => u.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(50).IsRequired();
+            builder.Property(u => u.RefreshToken).HasColumnName("refresh_token");
             builder.Property(u => u.ExpiresAt).HasColumnName("expires_at");
             builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasMaxLength(200).IsRequired();
             builder.Property(u => u.IsActive).HasColumnName("is_active").IsRequired();

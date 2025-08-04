@@ -15,5 +15,11 @@ namespace marketplace_practice.Controllers.dto
         [Required(ErrorMessage = "Роль обязательна")]
         [RegularExpression("^(Покупатель|Продавец)$", ErrorMessage = "Роль может быть только 'Покупатель' или 'Продавец'")]
         public string Role { get; set; } = string.Empty;
+
+        [StringLength(100, ErrorMessage = "Имя не может быть длиннее 100 символов")]
+        public string? FirstName { get; set; }
+
+        [StringLength(100, ErrorMessage = "Фамилия не может быть длиннее 100 символов")]
+        public string? LastName { get; set; }
     }
 }
