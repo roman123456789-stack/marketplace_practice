@@ -14,5 +14,6 @@ namespace marketplace_practice.Models
         public ICollection<OrderItem> OrderItems { get; set; }
         public LoyaltyTransaction LoyaltyTransaction { get; set; }
         public Payment Payment { get; set; }
+        public OrderDetail OrderDetail { get; set; }
     }
 }

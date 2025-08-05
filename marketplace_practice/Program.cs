@@ -1,10 +1,13 @@
 using marketplace_practice;
 using marketplace_practice.Models;
 using marketplace_practice.Services;
+using marketplace_practice.Services.interfaces;
+using marketplace_practice.Services.service_models;
 using marketplace_practice.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using System.Text;
@@ -40,6 +43,8 @@ builder.Services.AddControllers()
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
+builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfig"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<LoyaltyService>();
@@ -54,7 +59,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-builder.Services.AddIdentity<User, Role>(options =>
+builder.Services.AddIdentity<User, marketplace_practice.Models.Role>(options =>
 {
     // Настройки пароля потом нужно изменить
     options.Password.RequiredLength = 8; // Минимальная длина
@@ -73,7 +78,7 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<marketplace_practice.Models.Role>>();
 
     string[] roleNames = { "Покупатель", "Продавец" };
     string description = "Стандартная роль пользователя";
@@ -83,7 +88,7 @@ using (var scope = app.Services.CreateScope())
         var roleExist = await roleManager.RoleExistsAsync(roleName);
         if (!roleExist)
         {
-            var role = new Role
+            var role = new marketplace_practice.Models.Role
             {
                 Name = roleName,
                 Description = description,
