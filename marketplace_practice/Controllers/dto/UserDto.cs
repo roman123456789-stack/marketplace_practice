@@ -1,4 +1,5 @@
 ﻿using marketplace_practice.Models;
+using marketplace_practice.Services.dto;
 
 namespace marketplace_practice.Controllers.dto
 {
@@ -17,7 +18,7 @@ namespace marketplace_practice.Controllers.dto
         public DateTime UpdatedAt { get; set; }
 
         public ICollection<RoleDto> Roles { get; set; } = new List<RoleDto>();
-
+        public LoyaltyAccountDto LoyaltyAccount { get; set; }
         public UserDto(User user)
         {
             Id = user.Id;

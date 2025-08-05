@@ -15,18 +15,23 @@ namespace marketplace_practice.Services
         private readonly RoleManager<Role> _roleManager;
         private readonly TokenService _tokenService;
         private readonly AuthUtils _authUtils;
+        private readonly LoyaltyService _loyaltyService;
+
         public UserService(
             AppDbContext context, 
             UserManager<User> userManager, 
             RoleManager<Role> roleManager, 
             TokenService tokenService, 
-            AuthUtils authUtils)
+            AuthUtils authUtils,
+            LoyaltyService loyaltyService
+            )
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
             _tokenService = tokenService;
             _authUtils = authUtils;
+            _loyaltyService = loyaltyService;
         }
 
         public string GetUserById()
@@ -52,7 +57,7 @@ namespace marketplace_practice.Services
 
                 var user = new User
                 {
-                    UserName = dto.Email, // Обязательное поле для Identity
+                    UserName = dto.Email,
                     Email = dto.Email,
                     FirstName = dto.FirstName ?? string.Empty,
                     LastName = dto.LastName ?? string.Empty,
@@ -82,6 +87,16 @@ namespace marketplace_practice.Services
 
                 await _userManager.UpdateAsync(user);
 
+                var _loyaltyAccount = await _loyaltyService.GetOrCreateAccount(user.Id);
+
+                var loyaltyAccountDto = new LoyaltyAccountDto
+                {
+                    Id = _loyaltyAccount.Id,
+                    Balance = _loyaltyAccount.Balance,
+                    CreatedAt = _loyaltyAccount.CreatedAt,
+                    UpdatedAt = _loyaltyAccount.UpdatedAt
+                };
+
                 return new CreateUserResultDto
                 {
                     AccessToken = accessTokenData.AccessToken,
@@ -97,7 +112,8 @@ namespace marketplace_practice.Services
                                 Name = role.Name,
                                 Description = role.Description
                             }
-                        }.ToList()
+                        }.ToList(),
+                        LoyaltyAccount = loyaltyAccountDto
                     }
                 };
             }

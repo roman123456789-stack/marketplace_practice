@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,8 +31,17 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "your-super-long-secret-key-here-32-characters-min"))
     };
 });
+
+builder.Services.AddControllers()
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<LoyaltyService>();
 builder.Services.AddSingleton<AuthUtils>();
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
@@ -45,7 +55,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddIdentity<User, Role>(options =>
 {
     // Настройки пароля потом нужно изменить
-    options.Password.RequiredLength = 4; // Минимальная длина
+    options.Password.RequiredLength = 8; // Минимальная длина
     options.Password.RequireDigit = false; // Требуется хотя бы одна цифра
     options.Password.RequireLowercase = false; // Требуется строчная буква
     options.Password.RequireUppercase = false; // Требуется заглавная буква
@@ -59,6 +69,40 @@ builder.Services.AddIdentity<User, Role>(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
+
+    string[] roleNames = { "Покупатель", "Продавец" };
+    string description = "Стандартная роль пользователя";
+
+    foreach (var roleName in roleNames)
+    {
+        var roleExist = await roleManager.RoleExistsAsync(roleName);
+        if (!roleExist)
+        {
+            var role = new Role
+            {
+                Name = roleName,
+                Description = description,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var result = await roleManager.CreateAsync(role);
+            if (!result.Succeeded)
+            {
+                // Логируем ошибки, если не удалось создать роль
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                Console.WriteLine($"Ошибка при создании роли {roleName}: {errors}");
+            }
+            else
+            {
+                Console.WriteLine($"Роль '{roleName}' успешно создана.");
+            }
+        }
+    }
+}
 // HTTP pipeline
 if (app.Environment.IsDevelopment())
 {
