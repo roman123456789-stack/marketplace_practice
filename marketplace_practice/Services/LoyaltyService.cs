@@ -72,7 +72,7 @@ namespace marketplace_practice.Services
         }
 
         // Списать баллы
-        public async Task<(bool success, string message, LoyaltyAccount updatedAccount)> DeductPointsAsync(
+        public async Task<(bool success, string message, LoyaltyAccount updatedAccount)> DeductPoints(
             long userId,
             long orderId,
             long points,
@@ -108,7 +108,7 @@ namespace marketplace_practice.Services
         }
 
         // Получить историю транзакций
-        public async Task<List<LoyaltyTransaction>> GetTransactionsAsync(long userId)
+        public async Task<List<LoyaltyTransaction>> GetTransactions(long userId)
         {
             return await _context.LoyaltyTransactions
                 .Where(t => t.UserId == userId)
