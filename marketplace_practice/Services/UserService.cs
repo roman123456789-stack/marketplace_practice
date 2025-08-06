@@ -3,6 +3,9 @@ using marketplace_practice.Models;
 using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+using System.Security.Claims;
 
 namespace marketplace_practice.Services
 {
@@ -10,6 +13,7 @@ namespace marketplace_practice.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<Role> _roleManager;
+        private readonly SignInManager<User> _signInManager;
         private readonly TokenService _tokenService;
         private readonly LoyaltyService _loyaltyService;
         private readonly IEmailService _emailService;
@@ -17,6 +21,7 @@ namespace marketplace_practice.Services
         public UserService(
             UserManager<User> userManager,
             RoleManager<Role> roleManager,
+            SignInManager<User> signInManager,
             TokenService tokenService,
             LoyaltyService loyaltyService,
             IEmailService emailService
@@ -24,15 +29,16 @@ namespace marketplace_practice.Services
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _signInManager = signInManager;
             _tokenService = tokenService;
             _loyaltyService = loyaltyService;
             _emailService = emailService;
         }
 
-        public string GetUserById()
-        {
-            return "Dev version";
-        }
+        //public string GetUserById()
+        //{
+        //    return "Dev version";
+        //}
 
         public async Task<CreateUserResultDto> CreateUserAsync(CreateUserDto dto)
         {
@@ -66,10 +72,10 @@ namespace marketplace_practice.Services
                 };
 
                 // Генерация токенов доступа
-                var accessTokenData = _tokenService.GenerateAccessToken(user.Id, user.Email, role.Name);
+                //var accessTokenData = _tokenService.GenerateAccessToken(user.Id, user.Email, role.Name);
                 var refreshToken = _tokenService.GenerateRefreshToken();
 
-                user.ExpiresAt = accessTokenData.ExpiresAt;
+                //user.ExpiresAt = accessTokenData.ExpiresAt;
                 user.RefreshToken = refreshToken;
 
                 // Создаем пользователя (без подтверждения email)
@@ -101,8 +107,8 @@ namespace marketplace_practice.Services
                 // Создание DTO
                 return new CreateUserResultDto
                 {
-                    AccessToken = accessTokenData.AccessToken,
-                    ExpiresAt = accessTokenData.ExpiresAt,
+                    //AccessToken = accessTokenData.AccessToken,
+                    //ExpiresAt = accessTokenData.ExpiresAt,
                     RefreshToken = refreshToken,
                     User = new UserDto(user)
                     {
@@ -132,33 +138,162 @@ namespace marketplace_practice.Services
             }
         }
 
-        public string UpdateUser()
-        {
-            return "Dev version";
-        }
+        //public string UpdateUser()
+        //{
+        //    return "Dev version";
+        //}
 
-        public string DeleteUser()
-        {
-            return "Dev version";
-        }
+        //public string DeleteUser()
+        //{
+        //    return "Dev version";
+        //}
 
         public async Task<IdentityResult> ConfirmEmailAsync(string userId, string token)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    throw new Exception("Пользователь не найден");
+                }
+
+                var result = await _userManager.ConfirmEmailAsync(user, token);
+
+                if (result.Succeeded)
+                {
+                    user.IsVerified = true;
+                    await _userManager.UpdateAsync(user);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Ошибка при подтверждении Email: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<AuthResultDto> LoginAsync(LoginDto loginDto)
+        {
+            // Проверка пользователя
+            var user = await _userManager.FindByEmailAsync(loginDto.Email);
+            if (user == null)
+            {
+                return new AuthResultDto
+                {
+                    SignInResult = SignInResult.Failed,
+                    ErrorMessage = "Пользователь не найден"
+                };
+            }
+
+            // Попытка входа
+            var signInResult = await _signInManager.PasswordSignInAsync(
+                user,
+                loginDto.Password,
+                loginDto.RememberMe,
+                lockoutOnFailure: true);
+
+            if (!signInResult.Succeeded)
+            {
+                return HandleFailedLogin(signInResult, user);
+            }
+
+            // Генерация токенов
+            var (accessToken, refreshToken) = await GenerateAndStoreTokensAsync(user);
+
+            return new AuthResultDto
+            {
+                SignInResult = signInResult,
+                AccessTokenResult = accessToken,
+                RefreshToken = refreshToken
+            };
+        }
+
+        private async Task<(AccessTokenResult AccessToken, string RefreshToken)> GenerateAndStoreTokensAsync(User user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault(); // над этим еще нужно подумать
+
+            var accessTokenResult = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            await _userManager.UpdateAsync(user);
+
+            return (accessTokenResult, refreshToken);
+        }
+
+        private AuthResultDto HandleFailedLogin(SignInResult result, User user)
+        {
+            var errorMessage = result switch
+            {
+                { IsLockedOut: true } => "Аккаунт временно заблокирован",
+                { RequiresTwoFactor: true } => "Требуется двухфакторная аутентификация",
+                _ => "Неверный email или пароль"
+            };
+
+            return new AuthResultDto
+            {
+                SignInResult = result,
+                ErrorMessage = errorMessage
+            };
+        }
+
+        public async Task<AuthResultDto> RefreshTokenAsync(RefreshTokenDto request)
+        {
+            var user = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+
             if (user == null)
             {
                 throw new Exception("Пользователь не найден");
             }
 
-            var result = await _userManager.ConfirmEmailAsync(user, token);
-
-            if (result.Succeeded)
+            if (user.ExpiresAt < DateTime.UtcNow)
             {
-                user.IsVerified = true;
-                await _userManager.UpdateAsync(user);
+                return null;
             }
 
-            return result;
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault(); // над этим еще нужно подумать
+
+            var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            user.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            await _userManager.UpdateAsync(user);
+
+            return new AuthResultDto
+            {
+                AccessTokenResult = newAccessToken,
+                RefreshToken = newRefreshToken
+            };
+        }
+
+        public async Task LogoutAsync(ClaimsPrincipal userPrincipal)
+        {
+            try
+            {
+                // Выход из системы (удаляет аутентификационные куки)
+                await _signInManager.SignOutAsync();
+
+                //// Получаем текущего пользователя
+                //var user = await _userManager.GetUserAsync(userPrincipal);
+                //if (user == null)
+                //{
+                //    throw new Exception("Пользователь не найден");
+                //}
+
+                //// Инвалидируем refresh-токен
+                //user.RefreshToken = null;
+                //await _userManager.UpdateAsync(user); // <==================== RefreshToken NOT NULL
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Ошибка при выходе из аккаунта: {ex.Message}", ex);
+            }
         }
     }
 }

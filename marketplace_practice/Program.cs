@@ -7,13 +7,80 @@ using marketplace_practice.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using StackExchange.Redis;
+using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers()
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
+builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfig"));
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<LoyaltyService>();
+builder.Services.AddSingleton<AuthUtils>();
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
+
+builder.Services.AddIdentity<User, marketplace_practice.Models.Role>(options =>
+{
+    // Настройки пароля потом нужно изменить
+    options.Password.RequiredLength = 8; // Минимальная длина
+    options.Password.RequireDigit = false; // Требуется хотя бы одна цифра
+    options.Password.RequireLowercase = false; // Требуется строчная буква
+    options.Password.RequireUppercase = false; // Требуется заглавная буква
+    options.Password.RequireNonAlphanumeric = false; // Требуется спецсимвол
+    options.Password.RequiredUniqueChars = 1; // Уникальные символы
+
+    options.User.RequireUniqueEmail = true; // Уникальный email
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+
+    // Добавляем поддержку JWT в Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Введите JWT-токен",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http, // или ApiKey
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // Добавляем аутентификацию и авторизацию
 builder.Services.AddAuthentication(options =>
@@ -35,44 +102,6 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "your-super-long-secret-key-here-32-characters-min"))
     };
 });
-
-builder.Services.AddControllers()
-.AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-});
-
-builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfig"));
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<LoyaltyService>();
-builder.Services.AddSingleton<AuthUtils>();
-builder.Services.AddAuthorization();
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
-
-builder.Services.AddIdentity<User, marketplace_practice.Models.Role>(options =>
-{
-    // Настройки пароля потом нужно изменить
-    options.Password.RequiredLength = 8; // Минимальная длина
-    options.Password.RequireDigit = false; // Требуется хотя бы одна цифра
-    options.Password.RequireLowercase = false; // Требуется строчная буква
-    options.Password.RequireUppercase = false; // Требуется заглавная буква
-    options.Password.RequireNonAlphanumeric = false; // Требуется спецсимвол
-    options.Password.RequiredUniqueChars = 1; // Уникальные символы
-
-    options.User.RequireUniqueEmail = true; // Уникальный email
-})
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
 
 var app = builder.Build();
 
@@ -117,11 +146,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.UseHttpsRedirection();
 
 app.Run();
