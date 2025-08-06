@@ -27,6 +27,14 @@ namespace marketplace_practice.Controllers
         public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
             CreateUserResultDto result = await _userService.CreateUserAsync(dto);
+            Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(10),
+                Path = "/"
+            });
             return Ok(result);
         }
 
