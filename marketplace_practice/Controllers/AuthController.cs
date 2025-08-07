@@ -1,4 +1,5 @@
 ﻿using marketplace_practice.Controllers.dto;
+using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace marketplace_practice.Controllers
 {
     [ApiController]
-    [Route("auth")]    
+    [Route("auth")]
     public class AuthController : Controller
     {
         private readonly IAuthService _authService;
@@ -17,11 +18,12 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             try
             {
-                RegisterResultDto result = await _authService.CreateUserAsync(dto);
+                RegisterResultDto result = await _authService.RegisterAsync(dto);
                 Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
@@ -38,7 +40,28 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(
+            [FromQuery] string userId,
+            [FromQuery] string token)
+        {
+            try
+            {
+                var result = await _authService.ConfirmEmailAsync(userId, token);
+
+                if (result.Succeeded)
+                    return Ok("Email успешно подтверждён");
+
+                return BadRequest(string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var result = await _authService.LoginAsync(loginDto);
@@ -137,6 +160,68 @@ namespace marketplace_practice.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("recovery")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Recovery([FromBody] PasswordRecoveryDto request)
+        {
+            try
+            {
+                var result = await _authService.RecoveryAsync(request.Email);
+
+                if (result.Success)
+                {
+                    return Ok(new
+                    {
+                        Message = "Ссылка для восстановления отправлена на email",
+                        ResetToken = result.ResetToken
+                    }); // <--- Только для тестов
+                }
+
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Ошибка восстановления пароля",
+                    Detail = result.ErrorMessage
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Ошибка сервера",
+                    Detail = "Произошла внутренняя ошибка при обработке запроса"
+                });
+            }
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            try
+            {
+                var result = await _authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword);
+
+                if (result.Success)
+                {
+                    return Ok(new { Message = "Пароль успешно изменён" });
+                }
+
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Ошибка сброса пароля",
+                    Detail = result.ErrorMessage
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Ошибка сервера",
+                    Detail = "Произошла внутренняя ошибка при обработке запроса"
+                });
             }
         }
     }

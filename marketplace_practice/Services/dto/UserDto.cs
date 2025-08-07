@@ -1,7 +1,6 @@
 ﻿using marketplace_practice.Models;
-using marketplace_practice.Services.dto;
 
-namespace marketplace_practice.Controllers.dto
+namespace marketplace_practice.Services.dto
 {
     public class UserDto
     {

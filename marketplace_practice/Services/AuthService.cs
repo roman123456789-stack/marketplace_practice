@@ -5,6 +5,7 @@ using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.Net;
 using System.Security.Claims;
 
 namespace marketplace_practice.Services
@@ -34,7 +35,7 @@ namespace marketplace_practice.Services
             _emailService = emailService;
         }
 
-        public async Task<RegisterResultDto> CreateUserAsync(RegisterDto dto)
+        public async Task<RegisterResultDto> RegisterAsync(RegisterDto dto)
         {
             try
             {
@@ -67,7 +68,7 @@ namespace marketplace_practice.Services
 
                 // Генерация токенов доступа
                 //var accessTokenData = _tokenService.GenerateAccessToken(user.Id, user.Email, role.Name);
-                var refreshToken = _tokenService.GenerateRefreshToken();
+                var refreshToken = _tokenService.GenerateRefreshToken(); // <--- Потом убрать
 
                 //user.ExpiresAt = accessTokenData.ExpiresAt;
                 user.RefreshToken = refreshToken;
@@ -78,7 +79,7 @@ namespace marketplace_practice.Services
                 {
                     // Генерация токена подтверждения email и его отправка на почту
                     //var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    //await _emailService.SendEmailConfirmationAsync(dto.Email, user.Id, token);
+                    //await _emailService.SendEmailConfirmationAsync(dto.Email, user.FirstName, user.Id, token);
 
                     // Для корректной работы нужно настроить "EmailConfig" в appsettings.json
                 }
@@ -284,11 +285,88 @@ namespace marketplace_practice.Services
 
                 //// Инвалидация refresh-токена
                 //user.RefreshToken = null;
-                //await _userManager.UpdateAsync(user); // <==================== RefreshToken NOT NULL
+                //await _userManager.UpdateAsync(user); // <--- RefreshToken NOT NULL
             }
             catch (Exception ex)
             {
                 throw new ApplicationException($"Ошибка при выходе из аккаунта: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<RecoveryResultDto> RecoveryAsync(string email)
+        {
+            try
+            {
+                // Проверка пользователя
+                var user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    // Намеренно не сообщаем, что пользователь не найден
+                    return new RecoveryResultDto { Success = true };
+                }
+
+                // Генерация токена сброса пароля
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                // Отправка email
+                //await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
+
+                return new RecoveryResultDto
+                {
+                    Success = true,
+                    ResetToken = token
+                };
+            }
+            catch (Exception ex)
+            {
+                return new RecoveryResultDto
+                {
+                    Success = false,
+                    ErrorMessage = "Произошла ошибка при обработке запроса"
+                };
+            }
+        }
+
+        public async Task<RecoveryResultDto> ResetPasswordAsync(string email, string token, string newPassword)
+        {
+            try
+            {
+                // Проверка пользователя
+                var user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    return new RecoveryResultDto
+                    {
+                        Success = false,
+                        ErrorMessage = "Неверный токен или email"
+                    };
+                }
+
+                // Сброс пароля
+                var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return new RecoveryResultDto
+                    {
+                        Success = false,
+                        ErrorMessage = errors
+                    };
+                }
+
+                // Дополнительные действия после сброса пароля
+                await _userManager.UpdateSecurityStampAsync(user); // Инвалидация старых токенов
+
+                return new RecoveryResultDto { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new RecoveryResultDto
+                {
+                    Success = false,
+                    ErrorMessage = $"Произошла ошибка при сбросе пароля: {ex.Message}"
+                };
             }
         }
     }
