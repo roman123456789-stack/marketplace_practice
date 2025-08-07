@@ -1,9 +1,10 @@
 ﻿using marketplace_practice.Models;
+using marketplace_practice.Services.interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace marketplace_practice.Services
 {
-    public class LoyaltyService
+    public class LoyaltyService : ILoyaltyService
     {
         private readonly AppDbContext _context;
 

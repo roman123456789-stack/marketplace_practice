@@ -1,5 +1,4 @@
-﻿using marketplace_practice.Controllers.dto;
-using marketplace_practice.Services;
+﻿using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace marketplace_practice.Controllers
@@ -8,9 +7,9 @@ namespace marketplace_practice.Controllers
     [Route("email-verification")]
     public class EmailVerificationController : Controller
     {
-        private readonly UserService _userService;
+        private readonly IAuthService _userService;
 
-        public EmailVerificationController(UserService userService)
+        public EmailVerificationController(IAuthService userService)
         {
             _userService = userService;
         }

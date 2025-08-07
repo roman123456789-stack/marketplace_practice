@@ -3,7 +3,6 @@ using marketplace_practice.Models;
 using marketplace_practice.Services;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
-using marketplace_practice.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -21,12 +20,12 @@ builder.Services.AddControllers()
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
+builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfig"));
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<LoyaltyService>();
-builder.Services.AddSingleton<AuthUtils>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ILoyaltyService, LoyaltyService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

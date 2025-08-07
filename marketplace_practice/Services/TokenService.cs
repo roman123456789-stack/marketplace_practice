@@ -1,4 +1,7 @@
 ﻿using marketplace_practice.Services.dto;
+using marketplace_practice.Services.interfaces;
+using marketplace_practice.Services.service_models;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -6,13 +9,13 @@ using System.Text;
 
 namespace marketplace_practice.Services
 {
-    public class TokenService
+    public class TokenService : ITokenService
     {
-        private readonly IConfiguration _config;
+        private readonly JwtConfiguration _jwtConfig;
 
-        public TokenService(IConfiguration config)
+        public TokenService(IOptions<JwtConfiguration> jwtConfig)
         {
-            _config = config;
+            _jwtConfig = jwtConfig.Value;
         }
 
         public AccessTokenResult GenerateAccessToken(long userId, string email, string role)
@@ -24,14 +27,13 @@ namespace marketplace_practice.Services
                 new Claim(ClaimTypes.Role, role)
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                _config["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.Key));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
+                issuer: _jwtConfig.Issuer,
+                audience: _jwtConfig.Audience,
                 claims: claims,
                 expires: DateTime.Now.AddMinutes(30),
                 signingCredentials: creds);

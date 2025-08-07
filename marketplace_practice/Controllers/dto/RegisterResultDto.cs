@@ -1,6 +1,6 @@
 ﻿namespace marketplace_practice.Controllers.dto
 {
-    public class CreateUserResultDto
+    public class RegisterResultDto
     {
         public string AccessToken { get; set; } = string.Empty;
         public DateTime ExpiresAt { get; set; }

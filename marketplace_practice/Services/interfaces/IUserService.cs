@@ -4,9 +4,8 @@ namespace marketplace_practice.Services.interfaces
 {
     public interface IUserService
     {
-        //string GetUserById();
-        public Task<CreateUserResultDto> CreateUserAsync(CreateUserDto dto);
-        //string UpdateUser();
-        //string DeleteUser();
+        string GetUserById();
+        string UpdateUser();
+        string DeleteUser();
     }
 }

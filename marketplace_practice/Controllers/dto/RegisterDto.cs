@@ -2,7 +2,7 @@
 
 namespace marketplace_practice.Controllers.dto
 {
-    public class CreateUserDto
+    public class RegisterDto
     {
         [Required(ErrorMessage = "Email обязателен")]
         [EmailAddress(ErrorMessage = "Некорректный email")]
