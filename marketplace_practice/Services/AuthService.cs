@@ -322,7 +322,7 @@ namespace marketplace_practice.Services
                 return new RecoveryResultDto
                 {
                     Success = false,
-                    ErrorMessage = "Произошла ошибка при обработке запроса"
+                    ErrorMessage = $"Произошла ошибка при обработке запроса: {ex.Message}"
                 };
             }
         }
@@ -355,8 +355,8 @@ namespace marketplace_practice.Services
                     };
                 }
 
-                // Дополнительные действия после сброса пароля
-                await _userManager.UpdateSecurityStampAsync(user); // Инвалидация старых токенов
+                // Инвалидация старых токенов
+                await _userManager.UpdateSecurityStampAsync(user); 
 
                 return new RecoveryResultDto { Success = true };
             }
@@ -366,6 +366,86 @@ namespace marketplace_practice.Services
                 {
                     Success = false,
                     ErrorMessage = $"Произошла ошибка при сбросе пароля: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<RecoveryResultDto> InitiateEmailChangeAsync(string userId, string newEmail)
+        {
+            try
+            {
+                // Проверка пользователя
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return new RecoveryResultDto
+                    {
+                        Success = false,
+                        ErrorMessage = "Пользователь не найден"
+                    };
+                }
+
+                // Генерация токена изменения email
+                var token = await _userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+
+                // Отправка письма на новый email
+                // await _emailService.SendEmailChangeConfirmationAsync(newEmail, user.FirstName, user.Id, token);
+
+                return new RecoveryResultDto { Success = true, ResetToken = token };
+            }
+            catch (Exception ex)
+            {
+                return new RecoveryResultDto
+                {
+                    Success = false,
+                    ErrorMessage = $"Произошла ошибка при обработке запроса: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<RecoveryResultDto> ConfirmEmailChangeAsync(string userId, string newEmail, string token)
+        {
+            try
+            {
+                // Проверка пользователя
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return new RecoveryResultDto
+                    {
+                        Success = false,
+                        ErrorMessage = "Неверный токен или пользователь"
+                    };
+                }
+
+                // Подтверждение изменения email
+                var result = await _userManager.ChangeEmailAsync(user, newEmail, token);
+
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return new RecoveryResultDto
+                    {
+                        Success = false,
+                        ErrorMessage = errors
+                    };
+                }
+
+                // Обновляем имя пользователя (если используется email как username)
+                user.UserName = newEmail;
+                await _userManager.UpdateAsync(user);
+
+                // Инвалидация всех токенов
+                await _userManager.UpdateSecurityStampAsync(user);
+
+                return new RecoveryResultDto { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new RecoveryResultDto
+                {
+                    Success = false,
+                    ErrorMessage = $"Произошла ошибка при подтверждении email: {ex.Message}"
                 };
             }
         }

@@ -47,13 +47,33 @@ namespace marketplace_practice.Services
             var message = new EmailMessage
             {
                 To = new List<string> { email },
-                Subject = "Восстановление пароля",
+                Subject = "Подтвердите ваш email",
                 Body = $@"
                 <h1>Восстановление пароля</h1>
                 <p>Уважаемый {firstName}, Вы сделали запрос на сброс и восстановление пароля. Чтобы создать новый пароль перейдите по ссылке:</p>
                 <a href='{callbackUrl}'>Сбросить пароль</a>
                 <p>Ссылка действительна в течение 24 часов.</p>
                 <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>"
+            };
+
+            await SendEmailAsync(message);
+        }
+
+        public async Task SendEmailChangeConfirmationAsync(string newEmail, string firstName, long userId, string token)
+        {
+            var encodedToken = HttpUtility.UrlEncode(token);
+            var callbackUrl = $"{_emailConfig.BaseUrl}/auth/confirm-email-change?userId={userId.ToString()}&newEmail={newEmail}&token={encodedToken}";
+
+            var message = new EmailMessage
+            {
+                To = new List<string> { newEmail },
+                Subject = "Подтверждение изменения email",
+                Body = $@"
+                    <h1>Подтвердите изменение email</h1>
+                    <p>Уважаемый {firstName}, Вы сделали запрос на сброс и обновление почтового ящика.</p>
+                    <p>Для подтверждения нового email перейдите по ссылке:</p>
+                    <a href='{callbackUrl}'>Подтвердить email</a>
+                    <p>Если вы не запрашивали изменение email, немедленно сообщите в поддержку.</p>"
             };
 
             await SendEmailAsync(message);

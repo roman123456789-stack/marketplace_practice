@@ -7,6 +7,7 @@ namespace marketplace_practice.Services.interfaces
     {
         public Task SendEmailConfirmationAsync(string email, string firstName, long userId, string token);
         public Task SendPasswordResetEmailAsync(string email, string firstName, string token);
+        public Task SendEmailChangeConfirmationAsync(string email, string firstName, long userId, string token);
         public Task SendEmailAsync(EmailMessage message);
     }
 }

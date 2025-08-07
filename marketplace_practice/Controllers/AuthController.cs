@@ -3,6 +3,7 @@ using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace marketplace_practice.Controllers
 {
@@ -176,8 +177,8 @@ namespace marketplace_practice.Controllers
                     return Ok(new
                     {
                         Message = "Ссылка для восстановления отправлена на email",
-                        ResetToken = result.ResetToken
-                    }); // <--- Только для тестов
+                        ResetToken = result.ResetToken  // <--- Только для тестов
+                    });
                 }
 
                 return BadRequest(new ProblemDetails
@@ -223,6 +224,49 @@ namespace marketplace_practice.Controllers
                     Detail = "Произошла внутренняя ошибка при обработке запроса"
                 });
             }
+        }
+
+        [HttpPost("change-email")]
+        [Authorize]
+        public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _authService.InitiateEmailChangeAsync(userId, request.NewEmail);
+
+            if (result.Success)
+            {
+                return Ok(new { 
+                    Message = "Ссылка для подтверждения отправлена на новый email", 
+                    Token = result.ResetToken  // <--- Только для тестов
+                });
+            }
+
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Ошибка изменения email",
+                Detail = result.ErrorMessage
+            });
+        }
+
+        [HttpGet("confirm-email-change")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmailChange(
+            [FromQuery] string userId, 
+            [FromQuery] string newEmail,
+            [FromQuery] string token)
+        {
+            var result = await _authService.ConfirmEmailChangeAsync(userId, newEmail, token);
+
+            if (result.Success)
+            {
+                return Ok(new { Message = "Email успешно изменён" });
+            }
+
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Ошибка подтверждения email",
+                Detail = result.ErrorMessage
+            });
         }
     }
 }

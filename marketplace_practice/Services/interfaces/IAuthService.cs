@@ -14,5 +14,7 @@ namespace marketplace_practice.Services.interfaces
         public Task LogoutAsync(ClaimsPrincipal userPrincipal);
         public Task<RecoveryResultDto> RecoveryAsync(string email);
         public Task<RecoveryResultDto> ResetPasswordAsync(string email, string token, string newPassword);
+        public Task<RecoveryResultDto> InitiateEmailChangeAsync(string userId, string newEmail);
+        public Task<RecoveryResultDto> ConfirmEmailChangeAsync(string userId, string newEmail, string token);
     }
 }
