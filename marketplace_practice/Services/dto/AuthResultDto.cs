@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using marketplace_practice.Services.service_models;
+using Microsoft.AspNetCore.Identity;
 
 namespace marketplace_practice.Services.dto
 {
@@ -6,7 +7,7 @@ namespace marketplace_practice.Services.dto
     {
         public SignInResult SignInResult { get; set; }
         public AccessTokenResult AccessTokenResult { get; set; }
-        public string RefreshToken { get; set; }
+        public RefreshTokenModel RefreshToken { get; set; }
         public string ErrorMessage { get; set; }
     }
 }

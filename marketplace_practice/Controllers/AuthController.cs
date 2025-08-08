@@ -25,7 +25,7 @@ namespace marketplace_practice.Controllers
             try
             {
                 RegisterResultDto result = await _authService.RegisterAsync(dto);
-                Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+                Response.Cookies.Append("refreshToken", result.RefreshToken.Token, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = false,
@@ -72,7 +72,7 @@ namespace marketplace_practice.Controllers
                 if (result.AccessTokenResult != null && result.RefreshToken != null)
                 {
                     Response.Cookies.Append("refreshToken",
-                        result.RefreshToken,
+                        result.RefreshToken.Token,
                         new CookieOptions
                         {
                             HttpOnly = true,
@@ -107,7 +107,7 @@ namespace marketplace_practice.Controllers
             if (token != null)
             {
                 Response.Cookies.Append("refreshToken",
-                    token.RefreshToken,
+                    token.RefreshToken.Token,
                     new CookieOptions
                     {
                         HttpOnly = true,

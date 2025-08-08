@@ -2,6 +2,7 @@
 using marketplace_practice.Models;
 using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
+using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
@@ -68,10 +69,10 @@ namespace marketplace_practice.Services
 
                 // Генерация токенов доступа
                 //var accessTokenData = _tokenService.GenerateAccessToken(user.Id, user.Email, role.Name);
-                var refreshToken = _tokenService.GenerateRefreshToken(); // <--- Потом убрать
+                RefreshTokenModel refreshTokenData = _tokenService.GenerateRefreshToken(); // <--- Потом убрать
 
                 //user.ExpiresAt = accessTokenData.ExpiresAt;
-                user.RefreshToken = refreshToken;
+                user.RefreshToken = refreshTokenData.Token;
 
                 // Создание пользователя (без подтверждения email)
                 var result = await _userManager.CreateAsync(user, dto.Password);
@@ -99,12 +100,12 @@ namespace marketplace_practice.Services
 
                 var _loyaltyAccount = await _loyaltyService.GetOrCreateAccount(user.Id);
 
+                AccessTokenResult accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, dto.Role, false);
                 // Создание DTO
                 return new RegisterResultDto
                 {
-                    //AccessToken = accessTokenData.AccessToken,
-                    //ExpiresAt = accessTokenData.ExpiresAt,
-                    RefreshToken = refreshToken,
+                    AccessToken = accessToken,
+                    RefreshToken = refreshTokenData,
                     User = new UserDto(user)
                     {
                         Roles = new List<RoleDto>
@@ -187,17 +188,17 @@ namespace marketplace_practice.Services
             }
 
             // Генерация токенов
-            var (accessToken, refreshToken) = await GenerateAndStoreTokensAsync(user);
+            var (accessToken, refreshTokenData) = await GenerateAndStoreTokensAsync(user);
 
             return new AuthResultDto
             {
                 SignInResult = signInResult,
                 AccessTokenResult = accessToken,
-                RefreshToken = refreshToken
+                RefreshToken = refreshTokenData,
             };
         }
 
-        private async Task<(AccessTokenResult AccessToken, string RefreshToken)> GenerateAndStoreTokensAsync(User user)
+        private async Task<(AccessTokenResult AccessToken, RefreshTokenModel RefreshToken)> GenerateAndStoreTokensAsync(User user)
         {
             // Получение роли/ролей пользователя
             var roles = await _userManager.GetRolesAsync(user);
@@ -205,14 +206,14 @@ namespace marketplace_practice.Services
 
             // Генерация токенов доступа
             var accessTokenResult = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
-            var refreshToken = _tokenService.GenerateRefreshToken();
+            var refreshTokenData = _tokenService.GenerateRefreshToken();
 
             // Сохраниение refresh-токеноа в БД
-            user.RefreshToken = refreshToken;
-            user.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            user.RefreshToken = refreshTokenData.Token;
+            user.ExpiresAt = refreshTokenData.ExpiresAt;
             await _userManager.UpdateAsync(user);
 
-            return (accessTokenResult, refreshToken);
+            return (accessTokenResult, refreshTokenData);
         }
 
         private AuthResultDto HandleFailedLogin(SignInResult result, User user)
@@ -255,17 +256,17 @@ namespace marketplace_practice.Services
 
             // Генерация токенов доступа
             var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
-            var newRefreshToken = _tokenService.GenerateRefreshToken();
+            var newRefreshTokenData = _tokenService.GenerateRefreshToken();
 
             // Сохраниение refresh-токеноа в БД
-            user.RefreshToken = newRefreshToken;
-            user.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            user.RefreshToken = newRefreshTokenData.Token;
+            user.ExpiresAt = newRefreshTokenData.ExpiresAt;
             await _userManager.UpdateAsync(user);
 
             return new AuthResultDto
             {
                 AccessTokenResult = newAccessToken,
-                RefreshToken = newRefreshToken
+                RefreshToken = newRefreshTokenData
             };
         }
 

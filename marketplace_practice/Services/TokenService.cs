@@ -1,4 +1,5 @@
-﻿using marketplace_practice.Services.dto;
+﻿using marketplace_practice.Controllers.dto;
+using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.Extensions.Options;
@@ -18,13 +19,14 @@ namespace marketplace_practice.Services
             _jwtConfig = jwtConfig.Value;
         }
 
-        public AccessTokenResult GenerateAccessToken(long userId, string email, string role)
+        public AccessTokenResult GenerateAccessToken(long userId, string email, string role, bool is_verified = false)
         {
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Email, email),
-                new Claim(ClaimTypes.Role, role)
+                new Claim(ClaimTypes.Role, role),
+                new Claim("is_verified", is_verified.ToString().ToLower()),
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.Key));
@@ -42,13 +44,15 @@ namespace marketplace_practice.Services
             DateTime expires_at = DateTime.UtcNow.AddDays(15);
             return new AccessTokenResult
             {
-                AccessToken = access_token,
+                Token = access_token,
                 ExpiresAt = expires_at,
             };
         }
-        public string GenerateRefreshToken()
+        public RefreshTokenModel GenerateRefreshToken()
         {
-            return Guid.NewGuid().ToString();
+            string refreshToken = Guid.NewGuid().ToString();
+            DateTime expiresAt = DateTime.UtcNow.AddDays(30);
+            return new RefreshTokenModel(refreshToken, expiresAt);
         }
     }
 }
