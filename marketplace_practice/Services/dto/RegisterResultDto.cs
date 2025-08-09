@@ -4,8 +4,8 @@ namespace marketplace_practice.Services.dto
 {
     public class RegisterResultDto
     {
-        public AccessTokenResult AccessToken { get; set; }
-        public RefreshTokenModel RefreshToken { get; set; }
+        //public Token AccessToken { get; set; }
+        //public Token RefreshToken { get; set; }
 
         public UserDto User { get; set; }
         public string emailVerificationToken { get; set; } // временно (пока не настроим почту)

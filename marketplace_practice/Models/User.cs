@@ -6,10 +6,10 @@ namespace marketplace_practice.Models
     {
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string RefreshToken { get; set; }
+        public string RefreshToken { get; set; } // <--- сделать необязательным 
         public DateTime? ExpiresAt { get; set; }
         public bool IsActive { get; set; }
-        public bool IsVerified { get; set; }
+        public bool IsVerified { get; set; } // <--- убрать, т.к. есть EmailConfirmed 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 

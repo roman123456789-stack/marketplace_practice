@@ -1,12 +1,10 @@
-﻿using marketplace_practice.Controllers.dto;
-using marketplace_practice.Models;
+﻿using marketplace_practice.Models;
 using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
-using System.Net;
 using System.Security.Claims;
 
 namespace marketplace_practice.Services
@@ -36,31 +34,36 @@ namespace marketplace_practice.Services
             _emailService = emailService;
         }
 
-        public async Task<RegisterResultDto> RegisterAsync(RegisterDto dto)
+        public async Task<Result<RegisterResultDto>> RegisterAsync(
+            string email,
+            string password,
+            string userRole,
+            string? firstName,
+            string? lastName)
         {
             try
             {
                 // Проверка пользователя
-                var existingUser = await _userManager.FindByEmailAsync(dto.Email);
+                var existingUser = await _userManager.FindByEmailAsync(email);
                 if (existingUser != null)
                 {
-                    throw new Exception("Пользователь с таким email уже существует");
+                    return Result<RegisterResultDto>.Failure("Пользователь с таким email уже существует");
                 }
 
                 // Проверка роли
-                var role = await _roleManager.FindByNameAsync(dto.Role.Trim().ToUpper());
+                var role = await _roleManager.FindByNameAsync(userRole.Trim().ToUpper());
                 if (role == null)
                 {
-                    throw new ArgumentException($"Роль '{dto.Role}' не найдена. Допустимые значения: Покупатель, Продавец");
+                    return Result<RegisterResultDto>.Failure($"Роль '{userRole}' не найдена. Допустимые значения: Покупатель, Продавец");
                 }
 
                 // Создание пользователя
                 var user = new User
                 {
-                    UserName = dto.Email,
-                    Email = dto.Email,
-                    FirstName = dto.FirstName ?? string.Empty,
-                    LastName = dto.LastName ?? string.Empty,
+                    UserName = email,
+                    Email = email,
+                    FirstName = firstName ?? string.Empty,
+                    LastName = lastName ?? string.Empty,
                     IsActive = true,
                     IsVerified = false,
                     CreatedAt = DateTime.UtcNow,
@@ -69,14 +72,14 @@ namespace marketplace_practice.Services
 
                 // Генерация токенов доступа
                 //var accessTokenData = _tokenService.GenerateAccessToken(user.Id, user.Email, role.Name);
-                RefreshTokenModel refreshTokenData = _tokenService.GenerateRefreshToken(); // <--- Потом убрать
+                Token refreshToken = _tokenService.GenerateRefreshToken(); // <--- Потом убрать
 
                 //user.ExpiresAt = accessTokenData.ExpiresAt;
-                user.RefreshToken = refreshTokenData.Token;
+                user.RefreshToken = refreshToken.Value;
 
                 // Создание пользователя (без подтверждения email)
-                var result = await _userManager.CreateAsync(user, dto.Password);
-                if (result.Succeeded)
+                var createUserResult = await _userManager.CreateAsync(user, password);
+                if (createUserResult.Succeeded)
                 {
                     // Генерация токена подтверждения email и его отправка на почту
                     //var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -86,26 +89,25 @@ namespace marketplace_practice.Services
                 }
                 else
                 {
-                    throw new Exception($"Ошибка при создании пользователя: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    return Result<RegisterResultDto>.Failure(createUserResult.Errors.Select(e => e.Description));
                 }
 
                 // Назначение роли пользователю
-                var roleResult = await _userManager.AddToRoleAsync(user, role.Name);
-                if (!roleResult.Succeeded)
+                var addRoleResult = await _userManager.AddToRoleAsync(user, role.Name);
+                if (!addRoleResult.Succeeded)
                 {
-                    throw new Exception($"Ошибка при назначении роли: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                    return Result<RegisterResultDto>.Failure(addRoleResult.Errors.Select(e => e.Description));
                 }
 
                 await _userManager.UpdateAsync(user);
 
                 var _loyaltyAccount = await _loyaltyService.GetOrCreateAccount(user.Id);
 
-                AccessTokenResult accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, dto.Role, false);
+                Token accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, userRole, false);
+
                 // Создание DTO
-                return new RegisterResultDto
+                return Result<RegisterResultDto>.Success(new RegisterResultDto
                 {
-                    AccessToken = accessToken,
-                    RefreshToken = refreshTokenData,
                     User = new UserDto(user)
                     {
                         Roles = new List<RoleDto>
@@ -126,15 +128,15 @@ namespace marketplace_practice.Services
                         }
                     },
                     emailVerificationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user) // временно
-                };
+                });
             }
             catch (Exception ex)
             {
-                throw new ApplicationException($"Ошибка при создании пользователя: {ex.Message}", ex);
+                throw;
             }
         }
 
-        public async Task<IdentityResult> ConfirmEmailAsync(string userId, string token)
+        public async Task<Result<AuthTokensDto>> ConfirmEmailAndSignInAsync(string userId, string token)
         {
             try
             {
@@ -142,132 +144,148 @@ namespace marketplace_practice.Services
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    throw new Exception("Пользователь не найден");
+                    return Result<AuthTokensDto>.Failure("Пользователь не найден");
                 }
 
                 // Подтверждение email
-                var result = await _userManager.ConfirmEmailAsync(user, token);
-
-                if (result.Succeeded)
+                var confirmationResult = await _userManager.ConfirmEmailAsync(user, token);
+                if (!confirmationResult.Succeeded)
                 {
-                    user.IsVerified = true;
-                    await _userManager.UpdateAsync(user);
+                    return Result<AuthTokensDto>.Failure(confirmationResult.Errors.Select(e => e.Description));
                 }
 
-                return result;
+                // Вход в аккаунт
+                await _signInManager.SignInAsync(user, isPersistent: true);
+
+                // Генерация токенов
+                var authTokens = await GenerateAndStoreTokensAsync(user);
+                if (authTokens == null)
+                {
+                    return Result<AuthTokensDto>.Failure("Ошибка генерации токенов");
+                }
+
+                // Обновление флага верификации
+                user.EmailConfirmed = true;
+                await _userManager.UpdateAsync(user);
+
+                return Result<AuthTokensDto>.Success(authTokens);
             }
             catch (Exception ex)
             {
-                throw new ApplicationException($"Ошибка при подтверждении Email: {ex.Message}", ex);
+                throw;
             }
         }
 
-        public async Task<AuthResultDto> LoginAsync(LoginDto loginDto)
+        public async Task<Result<AuthTokensDto>> LoginAsync(string email, string password, bool rememberMe)
         {
-            // Проверка пользователя
-            var user = await _userManager.FindByEmailAsync(loginDto.Email);
-            if (user == null)
+            try
             {
-                return new AuthResultDto
+                // Проверка пользователя
+                var user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
                 {
-                    SignInResult = SignInResult.Failed,
-                    ErrorMessage = "Пользователь не найден"
-                };
+                    return Result<AuthTokensDto>.Failure("Неверные учетные данные");
+                }
+
+                if (!user.EmailConfirmed)
+                {
+                    return Result<AuthTokensDto>.Failure("Подтвердите email перед входом");
+                }
+
+                // Попытка входа
+                var signInResult = await _signInManager.PasswordSignInAsync(
+                    user,
+                    password,
+                    rememberMe,
+                    lockoutOnFailure: false);
+
+                if (!signInResult.Succeeded)
+                {
+                    return HandleSignInResult(signInResult, user);
+                }
+
+                // Генерация токенов
+                var authTokens = await GenerateAndStoreTokensAsync(user);
+                if (authTokens == null)
+                    return Result<AuthTokensDto>.Failure("Ошибка генерации токенов");
+
+                return Result<AuthTokensDto>.Success(authTokens);
             }
-
-            // Попытка входа
-            var signInResult = await _signInManager.PasswordSignInAsync(
-                user,
-                loginDto.Password,
-                loginDto.RememberMe,
-                lockoutOnFailure: true);
-
-            if (!signInResult.Succeeded)
+            catch (Exception ex)
             {
-                return HandleFailedLogin(signInResult, user);
+                throw;
             }
-
-            // Генерация токенов
-            var (accessToken, refreshTokenData) = await GenerateAndStoreTokensAsync(user);
-
-            return new AuthResultDto
-            {
-                SignInResult = signInResult,
-                AccessTokenResult = accessToken,
-                RefreshToken = refreshTokenData,
-            };
         }
 
-        private async Task<(AccessTokenResult AccessToken, RefreshTokenModel RefreshToken)> GenerateAndStoreTokensAsync(User user)
+        private async Task<AuthTokensDto?> GenerateAndStoreTokensAsync(User user)
         {
             // Получение роли/ролей пользователя
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault(); // над этим еще нужно подумать
 
             // Генерация токенов доступа
-            var accessTokenResult = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
-            var refreshTokenData = _tokenService.GenerateRefreshToken();
+            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
+            var refreshToken = _tokenService.GenerateRefreshToken();
 
-            // Сохраниение refresh-токеноа в БД
-            user.RefreshToken = refreshTokenData.Token;
-            user.ExpiresAt = refreshTokenData.ExpiresAt;
+            // Сохраниение refresh-токена в БД
+            user.RefreshToken = refreshToken.Value;
+            user.ExpiresAt = refreshToken.ExpiresAt;
             await _userManager.UpdateAsync(user);
 
-            return (accessTokenResult, refreshTokenData);
+            return accessToken != null && refreshToken != null
+                ? new AuthTokensDto
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
+                }
+                : null;
         }
 
-        private AuthResultDto HandleFailedLogin(SignInResult result, User user)
+        private Result<AuthTokensDto> HandleSignInResult(SignInResult result, User user)
         {
-            // Обработка ошибок взода в аккаунт
-            var errorMessage = result switch
+            if (result.IsLockedOut)
             {
-                { IsLockedOut: true } => "Аккаунт временно заблокирован",
-                { RequiresTwoFactor: true } => "Требуется двухфакторная аутентификация",
-                _ => "Неверный email или пароль"
-            };
+                return Result<AuthTokensDto>.Failure("Аккаунт временно заблокирован");
+            }
 
-            return new AuthResultDto
+            if (result.RequiresTwoFactor)
             {
-                SignInResult = result,
-                ErrorMessage = errorMessage
-            };
+                return Result<AuthTokensDto>.Failure("Требуется двухфакторная аутентификация");
+            }
+
+            return Result<AuthTokensDto>.Failure("Неверные учетные данные");
         }
 
-        public async Task<AuthResultDto> RefreshTokenAsync(RefreshTokenDto request)
+        public async Task<Result<AuthTokensDto>> RefreshTokenAsync(string token)
         {
-            // Проверка пользователя
-            var user = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
-
-            if (user == null)
+            try
             {
-                throw new Exception("Пользователь не найден");
+                // Проверка пользователя
+                var user = await _userManager.Users
+                    .FirstOrDefaultAsync(u => u.RefreshToken == token);
+
+                if (user == null)
+                {
+                    return Result<AuthTokensDto>.Failure("Пользователь не найден");
+                }
+
+                // Проверка refresh-токена
+                if (user.ExpiresAt < DateTime.UtcNow)
+                {
+                    return Result<AuthTokensDto>.Failure("Время жизни токена истекло");
+                }
+
+                // Генерация токенов
+                var authTokens = await GenerateAndStoreTokensAsync(user);
+                if (authTokens == null)
+                    return Result<AuthTokensDto>.Failure("Ошибка генерации токенов");
+
+                return Result<AuthTokensDto>.Success(authTokens);
             }
-
-            // Проверка refresh-токена
-            if (user.ExpiresAt < DateTime.UtcNow)
+            catch (Exception ex)
             {
-                return null;
+                throw;
             }
-
-            // Получение роли/ролей пользователя
-            var roles = await _userManager.GetRolesAsync(user);
-            var role = roles.FirstOrDefault(); // над этим еще нужно подумать
-
-            // Генерация токенов доступа
-            var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
-            var newRefreshTokenData = _tokenService.GenerateRefreshToken();
-
-            // Сохраниение refresh-токеноа в БД
-            user.RefreshToken = newRefreshTokenData.Token;
-            user.ExpiresAt = newRefreshTokenData.ExpiresAt;
-            await _userManager.UpdateAsync(user);
-
-            return new AuthResultDto
-            {
-                AccessTokenResult = newAccessToken,
-                RefreshToken = newRefreshTokenData
-            };
         }
 
         public async Task LogoutAsync(ClaimsPrincipal userPrincipal)
@@ -290,11 +308,11 @@ namespace marketplace_practice.Services
             }
             catch (Exception ex)
             {
-                throw new ApplicationException($"Ошибка при выходе из аккаунта: {ex.Message}", ex);
+                throw;
             }
         }
 
-        public async Task<RecoveryResultDto> RecoveryAsync(string email)
+        public async Task<Result<string>> RecoveryAsync(string email)
         {
             try
             {
@@ -303,7 +321,7 @@ namespace marketplace_practice.Services
                 if (user == null)
                 {
                     // Намеренно не сообщаем, что пользователь не найден
-                    return new RecoveryResultDto { Success = true };
+                    return Result<string>.Success(string.Empty);
                 }
 
                 // Генерация токена сброса пароля
@@ -312,23 +330,15 @@ namespace marketplace_practice.Services
                 // Отправка email
                 //await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
 
-                return new RecoveryResultDto
-                {
-                    Success = true,
-                    ResetToken = token
-                };
+                return Result<string>.Success(token);
             }
             catch (Exception ex)
             {
-                return new RecoveryResultDto
-                {
-                    Success = false,
-                    ErrorMessage = $"Произошла ошибка при обработке запроса: {ex.Message}"
-                };
+                throw;
             }
         }
 
-        public async Task<RecoveryResultDto> ResetPasswordAsync(string email, string token, string newPassword)
+        public async Task<Result<string>> ResetPasswordAsync(string email, string token, string newPassword)
         {
             try
             {
@@ -336,11 +346,7 @@ namespace marketplace_practice.Services
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user == null)
                 {
-                    return new RecoveryResultDto
-                    {
-                        Success = false,
-                        ErrorMessage = "Неверный токен или email"
-                    };
+                    return Result<string>.Failure("Пользователь не найден");
                 }
 
                 // Сброс пароля
@@ -348,30 +354,21 @@ namespace marketplace_practice.Services
 
                 if (!result.Succeeded)
                 {
-                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    return new RecoveryResultDto
-                    {
-                        Success = false,
-                        ErrorMessage = errors
-                    };
+                    return Result<string>.Failure(result.Errors.Select(e => e.Description));
                 }
 
                 // Инвалидация старых токенов
-                await _userManager.UpdateSecurityStampAsync(user); 
+                await _userManager.UpdateSecurityStampAsync(user);
 
-                return new RecoveryResultDto { Success = true };
+                return Result<string>.Success(string.Empty);
             }
             catch (Exception ex)
             {
-                return new RecoveryResultDto
-                {
-                    Success = false,
-                    ErrorMessage = $"Произошла ошибка при сбросе пароля: {ex.Message}"
-                };
+                throw;
             }
         }
 
-        public async Task<RecoveryResultDto> InitiateEmailChangeAsync(string userId, string newEmail)
+        public async Task<Result<string>> InitiateEmailChangeAsync(string userId, string newEmail)
         {
             try
             {
@@ -379,11 +376,12 @@ namespace marketplace_practice.Services
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return new RecoveryResultDto
-                    {
-                        Success = false,
-                        ErrorMessage = "Пользователь не найден"
-                    };
+                    return Result<string>.Failure("Пользователь не найден");
+                }
+
+                if (await _userManager.FindByEmailAsync(newEmail) != null)
+                {
+                    return Result<string>.Failure("Email уже используется");
                 }
 
                 // Генерация токена изменения email
@@ -392,19 +390,15 @@ namespace marketplace_practice.Services
                 // Отправка письма на новый email
                 // await _emailService.SendEmailChangeConfirmationAsync(newEmail, user.FirstName, user.Id, token);
 
-                return new RecoveryResultDto { Success = true, ResetToken = token };
+                return Result<string>.Success(token);
             }
             catch (Exception ex)
             {
-                return new RecoveryResultDto
-                {
-                    Success = false,
-                    ErrorMessage = $"Произошла ошибка при обработке запроса: {ex.Message}"
-                };
+                throw;
             }
         }
 
-        public async Task<RecoveryResultDto> ConfirmEmailChangeAsync(string userId, string newEmail, string token)
+        public async Task<Result<string>> ConfirmEmailChangeAsync(string userId, string newEmail, string token)
         {
             try
             {
@@ -412,11 +406,7 @@ namespace marketplace_practice.Services
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return new RecoveryResultDto
-                    {
-                        Success = false,
-                        ErrorMessage = "Неверный токен или пользователь"
-                    };
+                    return Result<string>.Failure("Пользователь не найден");
                 }
 
                 // Подтверждение изменения email
@@ -424,12 +414,7 @@ namespace marketplace_practice.Services
 
                 if (!result.Succeeded)
                 {
-                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    return new RecoveryResultDto
-                    {
-                        Success = false,
-                        ErrorMessage = errors
-                    };
+                    return Result<string>.Failure(result.Errors.Select(e => e.Description));
                 }
 
                 // Обновляем имя пользователя (если используется email как username)
@@ -439,15 +424,11 @@ namespace marketplace_practice.Services
                 // Инвалидация всех токенов
                 await _userManager.UpdateSecurityStampAsync(user);
 
-                return new RecoveryResultDto { Success = true };
+                return Result<string>.Success(token);
             }
             catch (Exception ex)
             {
-                return new RecoveryResultDto
-                {
-                    Success = false,
-                    ErrorMessage = $"Произошла ошибка при подтверждении email: {ex.Message}"
-                };
+                throw;
             }
         }
     }

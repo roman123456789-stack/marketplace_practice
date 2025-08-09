@@ -1,20 +1,19 @@
-﻿using marketplace_practice.Controllers.dto;
-using marketplace_practice.Services.dto;
-using Microsoft.AspNetCore.Identity;
+﻿using marketplace_practice.Services.dto;
+using marketplace_practice.Services.service_models;
 using System.Security.Claims;
 
 namespace marketplace_practice.Services.interfaces
 {
     public interface IAuthService
     {
-        public Task<RegisterResultDto> RegisterAsync(RegisterDto dto);
-        public Task<IdentityResult> ConfirmEmailAsync(string userId, string token);
-        public Task<AuthResultDto> LoginAsync(LoginDto loginDto);
-        public Task<AuthResultDto> RefreshTokenAsync(RefreshTokenDto request);
+        public Task<Result<RegisterResultDto>> RegisterAsync(string email, string password, string role, string? firstName, string? lastName);
+        public Task<Result<AuthTokensDto>> ConfirmEmailAndSignInAsync(string userId, string token);
+        public Task<Result<AuthTokensDto>> LoginAsync(string email, string password, bool rememberMe);
+        public Task<Result<AuthTokensDto>> RefreshTokenAsync(string token);
         public Task LogoutAsync(ClaimsPrincipal userPrincipal);
-        public Task<RecoveryResultDto> RecoveryAsync(string email);
-        public Task<RecoveryResultDto> ResetPasswordAsync(string email, string token, string newPassword);
-        public Task<RecoveryResultDto> InitiateEmailChangeAsync(string userId, string newEmail);
-        public Task<RecoveryResultDto> ConfirmEmailChangeAsync(string userId, string newEmail, string token);
+        public Task<Result<string>> RecoveryAsync(string email);
+        public Task<Result<string>> ResetPasswordAsync(string email, string token, string newPassword);
+        public Task<Result<string>> InitiateEmailChangeAsync(string userId, string newEmail);
+        public Task<Result<string>> ConfirmEmailChangeAsync(string userId, string newEmail, string token);
     }
 }

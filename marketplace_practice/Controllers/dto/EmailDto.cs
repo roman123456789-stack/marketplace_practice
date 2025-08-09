@@ -2,7 +2,7 @@
 
 namespace marketplace_practice.Controllers.dto
 {
-    public class PasswordRecoveryDto
+    public class EmailDto
     {
         [Required]
         [EmailAddress]
