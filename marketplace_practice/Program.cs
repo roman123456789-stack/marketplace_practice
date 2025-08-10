@@ -1,9 +1,11 @@
 using marketplace_practice;
+using marketplace_practice.Utils;
 using marketplace_practice.Models;
 using marketplace_practice.Services;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -26,7 +28,6 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ILoyaltyService, LoyaltyService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -84,7 +85,7 @@ builder.Services.AddSwaggerGen(c =>
 // Добавляем аутентификацию и авторизацию
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = "JwtRefreshToken";
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
@@ -100,6 +101,19 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "your-super-long-secret-key-here-32-characters-min"))
     };
+})
+.AddScheme<JwtRefreshTokenOptions, JwtRefreshTokenHandler>(
+    "JwtRefreshToken",
+    options => { });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+        .AddAuthenticationSchemes(
+            JwtBearerDefaults.AuthenticationScheme,
+            "JwtRefreshToken")
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 var app = builder.Build();

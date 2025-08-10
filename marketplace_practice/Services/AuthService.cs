@@ -275,8 +275,35 @@ namespace marketplace_practice.Services
                     return Result<AuthTokensDto>.Failure("Время жизни токена истекло");
                 }
 
+                // Проверка, нужно ли обновлять refresh-токен (осталось < 1 дня)
+                bool shouldRefreshToken = user.ExpiresAt.HasValue
+                    && (user.ExpiresAt.Value - DateTime.UtcNow).TotalDays < 1;
+
                 // Генерация токенов
-                var authTokens = await GenerateAndStoreTokensAsync(user);
+                AuthTokensDto authTokens;
+                if (shouldRefreshToken)
+                {
+                    // Генерация новых токенов (включая refresh-токен)
+                    authTokens = await GenerateAndStoreTokensAsync(user);
+                }
+                else
+                {
+                    // Генерация только нового access-токена (refresh-токен остается прежним)
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = roles.FirstOrDefault();
+                    var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
+
+                    authTokens = new AuthTokensDto
+                    {
+                        AccessToken = accessToken,
+                        RefreshToken = new Token
+                        {
+                            Value = token,
+                            ExpiresAt = (DateTime)user.ExpiresAt!
+                        }
+                    };
+                }
+
                 if (authTokens == null)
                     return Result<AuthTokensDto>.Failure("Ошибка генерации токенов");
 
@@ -294,13 +321,6 @@ namespace marketplace_practice.Services
             {
                 // Выход из системы (удаляет аутентификационные куки)
                 await _signInManager.SignOutAsync();
-
-                //// Проверка пользователя
-                //var user = await _userManager.GetUserAsync(userPrincipal);
-                //if (user == null)
-                //{
-                //    throw new Exception("Пользователь не найден");
-                //}
 
                 //// Инвалидация refresh-токена
                 //user.RefreshToken = null;
@@ -328,7 +348,7 @@ namespace marketplace_practice.Services
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
                 // Отправка email
-                //await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
+                await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
 
                 return Result<string>.Success(token);
             }

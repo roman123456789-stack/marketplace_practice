@@ -17,35 +17,36 @@ namespace marketplace_practice.Services
             _jwtConfig = jwtConfig.Value;
         }
 
-        public Token GenerateAccessToken(long userId, string email, string role, bool is_verified = false)
+        public Token GenerateAccessToken(long userId, string email, string role, bool isVerified = false)
         {
+            var tokenExpiration = TimeSpan.FromMinutes(double.Parse(_jwtConfig.Lifetime));
+            var tokenExpirationDate = DateTime.UtcNow.Add(tokenExpiration);
+
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Email, email),
                 new Claim(ClaimTypes.Role, role),
-                new Claim("is_verified", is_verified.ToString().ToLower()),
+                new Claim("is_verified", isVerified.ToString().ToLower(), ClaimValueTypes.Boolean)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.Key));
-
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
                 issuer: _jwtConfig.Issuer,
                 audience: _jwtConfig.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
+                expires: tokenExpirationDate,
                 signingCredentials: creds);
 
-            string access_token = new JwtSecurityTokenHandler().WriteToken(token);
-            DateTime expires_at = DateTime.UtcNow.AddDays(15);
             return new Token
             {
-                Value = access_token,
-                ExpiresAt = expires_at,
+                Value = new JwtSecurityTokenHandler().WriteToken(token),
+                ExpiresAt = tokenExpirationDate
             };
         }
+
         public Token GenerateRefreshToken()
         {
             string refreshToken = Guid.NewGuid().ToString();
