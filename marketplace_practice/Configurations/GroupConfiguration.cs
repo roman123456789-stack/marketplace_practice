@@ -12,17 +12,19 @@ namespace marketplace_practice.Configurations
             builder.HasKey(g => g.Id);
             builder.Property(g => g.Id).HasColumnName("id");
             builder.Property(g => g.CategoryId).HasColumnName("category_id").IsRequired();
-            builder.Property(g => g.SubcategoryId).HasColumnName("subcategory_id").IsRequired();
+            builder.Property(g => g.SubcategoryId).HasColumnName("subcategory_id");
 
             builder.HasOne(g => g.Category)
-              .WithMany(c => c.Groups)
-              .HasForeignKey(g => g.CategoryId)
-              .OnDelete(DeleteBehavior.Restrict);
+                .WithMany(c => c.Groups)
+                .HasForeignKey(g => g.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
 
             builder.HasOne(g => g.Subcategory)
-                  .WithOne(s => s.Group)
-                  .HasForeignKey<Group>(g => g.SubcategoryId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                .WithOne(s => s.Group)
+                .HasForeignKey<Group>(g => g.SubcategoryId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
         }
     }
 }

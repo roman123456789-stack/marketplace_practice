@@ -13,8 +13,6 @@ namespace marketplace_practice.Configurations
             builder.Property(r => r.Id);
             builder.Property(r => r.Name).HasMaxLength(100).IsRequired();
             builder.Property(r => r.Description);
-            builder.Property(r => r.CreatedAt).IsRequired();
-            builder.Property(r => r.UpdatedAt);
         }
     }
 }

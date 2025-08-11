@@ -12,7 +12,7 @@ namespace marketplace_practice.Services.dto
         public DateTime? ExpiresAt { get; set; }
         public string PasswordHash { get; set; }
         public bool IsActive { get; set; }
-        public bool IsVerified { get; set; }
+        public bool EmailConfirmed { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
@@ -28,7 +28,7 @@ namespace marketplace_practice.Services.dto
             ExpiresAt = user.ExpiresAt;
             PasswordHash = user.PasswordHash;
             IsActive = user.IsActive;
-            IsVerified = user.IsVerified;
+            EmailConfirmed = user.EmailConfirmed;
         }
     }
 }

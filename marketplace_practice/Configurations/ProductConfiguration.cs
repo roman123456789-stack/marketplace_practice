@@ -23,7 +23,8 @@ namespace marketplace_practice.Configurations
             builder.HasOne(p => p.User)
                 .WithMany(u => u.Products)
                 .HasForeignKey(p => p.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
 
             builder.HasMany(p => p.Groups)
                 .WithMany(g => g.Products)

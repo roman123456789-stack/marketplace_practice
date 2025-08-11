@@ -133,9 +133,7 @@ using (var scope = app.Services.CreateScope())
             var role = new marketplace_practice.Models.Role
             {
                 Name = roleName,
-                Description = description,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Description = description
             };
 
             var result = await roleManager.CreateAsync(role);

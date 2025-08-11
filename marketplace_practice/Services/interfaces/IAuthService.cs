@@ -10,7 +10,7 @@ namespace marketplace_practice.Services.interfaces
         public Task<Result<AuthTokensDto>> ConfirmEmailAndSignInAsync(string userId, string token);
         public Task<Result<AuthTokensDto>> LoginAsync(string email, string password, bool rememberMe);
         public Task<Result<AuthTokensDto>> RefreshTokenAsync(string token);
-        public Task LogoutAsync(ClaimsPrincipal userPrincipal);
+        public Task<Result<string>> LogoutAsync(ClaimsPrincipal userPrincipal);
         public Task<Result<string>> RecoveryAsync(string email);
         public Task<Result<string>> ResetPasswordAsync(string email, string token, string newPassword);
         public Task<Result<string>> InitiateEmailChangeAsync(string userId, string newEmail);

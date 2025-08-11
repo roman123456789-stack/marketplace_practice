@@ -19,7 +19,7 @@ namespace marketplace_practice.Configurations
             builder.HasOne(la => la.User)
                   .WithOne(u => u.LoyaltyAccount)
                   .HasForeignKey<LoyaltyAccount>(la => la.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .IsRequired();
         }
     }
 }

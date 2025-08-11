@@ -65,17 +65,10 @@ namespace marketplace_practice.Services
                     FirstName = firstName ?? string.Empty,
                     LastName = lastName ?? string.Empty,
                     IsActive = true,
-                    IsVerified = false,
+                    EmailConfirmed = false,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-
-                // Генерация токенов доступа
-                //var accessTokenData = _tokenService.GenerateAccessToken(user.Id, user.Email, role.Name);
-                Token refreshToken = _tokenService.GenerateRefreshToken(); // <--- Потом убрать
-
-                //user.ExpiresAt = accessTokenData.ExpiresAt;
-                user.RefreshToken = refreshToken.Value;
 
                 // Создание пользователя (без подтверждения email)
                 var createUserResult = await _userManager.CreateAsync(user, password);
@@ -101,9 +94,8 @@ namespace marketplace_practice.Services
 
                 await _userManager.UpdateAsync(user);
 
+                // Создание аккаунта лояльности
                 var _loyaltyAccount = await _loyaltyService.GetOrCreateAccount(user.Id);
-
-                Token accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, userRole, false);
 
                 // Создание DTO
                 return Result<RegisterResultDto>.Success(new RegisterResultDto
@@ -315,16 +307,25 @@ namespace marketplace_practice.Services
             }
         }
 
-        public async Task LogoutAsync(ClaimsPrincipal userPrincipal)
+        public async Task<Result<string>> LogoutAsync(ClaimsPrincipal userPrincipal)
         {
             try
             {
                 // Выход из системы (удаляет аутентификационные куки)
                 await _signInManager.SignOutAsync();
 
-                //// Инвалидация refresh-токена
-                //user.RefreshToken = null;
-                //await _userManager.UpdateAsync(user); // <--- RefreshToken NOT NULL
+                // Проверка пользователя
+                var user = await _userManager.GetUserAsync(userPrincipal);
+                if (user == null)
+                {
+                    return Result<string>.Failure("Пользователь не найден");
+                }
+
+                // Инвалидация refresh-токена
+                user.RefreshToken = null;
+                await _userManager.UpdateAsync(user);
+
+                return Result<string>.Success(string.Empty);
             }
             catch (Exception ex)
             {

@@ -12,21 +12,23 @@ namespace marketplace_practice.Configurations
             builder.HasKey(lt => lt.Id);
             builder.Property(lt => lt.Id).HasColumnName("id");
             builder.Property(lt => lt.UserId).HasColumnName("user_id").IsRequired();
-            builder.Property(lt => lt.OrderId).HasColumnName("order_id");
+            builder.Property(lt => lt.OrderId).HasColumnName("order_id").IsRequired();
             builder.Property(lt => lt.Type).HasColumnName("type").HasMaxLength(50).IsRequired();
             builder.Property(lt => lt.Points).HasColumnName("points").IsRequired();
             builder.Property(lt => lt.Description).HasColumnName("description");
             builder.Property(lt => lt.CreatedAt).HasColumnName("created_at").IsRequired();
 
             builder.HasOne(lt => lt.User)
-                  .WithMany(u => u.LoyaltyTransactions)
-                  .HasForeignKey(lt => lt.UserId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                .WithMany(u => u.LoyaltyTransactions)
+                .HasForeignKey(lt => lt.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
 
             builder.HasOne(lt => lt.Order)
-                  .WithOne(o => o.LoyaltyTransaction)
-                  .HasForeignKey<LoyaltyTransaction>(lt => lt.OrderId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                .WithOne(o => o.LoyaltyTransaction)
+                .HasForeignKey<LoyaltyTransaction>(lt => lt.OrderId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
         }
     }
 }

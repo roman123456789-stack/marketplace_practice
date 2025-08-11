@@ -10,7 +10,7 @@ namespace marketplace_practice.Models
         public int Quantity { get; set; }
         public Currency Currency { get; set; }
         public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
         public Order Order { get; set; }
         public Product Product { get; set; }

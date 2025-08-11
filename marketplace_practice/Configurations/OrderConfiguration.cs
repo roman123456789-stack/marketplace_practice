@@ -17,9 +17,10 @@ namespace marketplace_practice.Configurations
             builder.Property(o => o.UpdatedAt).HasColumnName("updated_at");
 
             builder.HasOne(o => o.User)
-                  .WithMany(u => u.Orders)
-                  .HasForeignKey(o => o.UserId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                .WithMany(u => u.Orders)
+                .HasForeignKey(o => o.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
         }
     }
 }

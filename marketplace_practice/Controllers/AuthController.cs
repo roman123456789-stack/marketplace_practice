@@ -221,16 +221,21 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                await _authService.LogoutAsync(User);
+                var result = await _authService.LogoutAsync(User);
 
-                Response.Cookies.Delete("refreshToken", new CookieOptions
+                if (result.IsSuccess)
                 {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Strict
-                });
+                    Response.Cookies.Delete("refreshToken", new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict
+                    });
 
-                return Ok("Вы успешно вышли из системы");
+                    return Ok("Вы успешно вышли из системы");
+                }
+
+                return BadRequest(new { Errors = result.Errors });
             }
             catch (Exception ex)
             {
