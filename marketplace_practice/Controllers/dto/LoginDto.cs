@@ -4,12 +4,14 @@ namespace marketplace_practice.Controllers.dto
 {
     public class LoginDto
     {
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Email обязателен")]
+        [EmailAddress(ErrorMessage = "Некорректный email")]
         public string Email { get; set; }
-        [Required]
-        [MinLength(8)]
+
+        [Required(ErrorMessage = "Пароль обязателен")]
+        [MinLength(8, ErrorMessage = "Пароль должен быть не менее 8 символов")]
         public string Password { get; set; }
+
         public bool RememberMe { get; set; }
     }
 }

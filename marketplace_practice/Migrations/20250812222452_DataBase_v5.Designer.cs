@@ -12,7 +12,7 @@ using marketplace_practice;
 namespace marketplace_practice.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250811213717_DataBase_v5")]
+    [Migration("20250812222452_DataBase_v5")]
     partial class DataBase_v5
     {
         /// <inheritdoc />

@@ -4,8 +4,8 @@ namespace marketplace_practice.Controllers.dto
 {
     public class EmailDto
     {
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Email обязателен")]
+        [EmailAddress(ErrorMessage = "Некорректный email")]
         public string Email { get; set; }
     }
 }

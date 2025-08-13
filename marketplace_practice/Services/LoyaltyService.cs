@@ -14,7 +14,7 @@ namespace marketplace_practice.Services
         }
 
         // Получить аккаунт лояльности пользователя
-        public async Task<LoyaltyAccount> GetAccountAsync(long userId)
+        public async Task<LoyaltyAccount?> GetAccountAsync(long userId)
         {
             return await _context.LoyaltyAccounts
                 .FirstOrDefaultAsync(a => a.UserId == userId);
@@ -42,7 +42,7 @@ namespace marketplace_practice.Services
         }
 
         // Начислить баллы
-        public async Task<(bool success, string message, LoyaltyAccount updatedAccount)> AddPoints(
+        public async Task<(bool success, string message, LoyaltyAccount? updatedAccount)> AddPoints(
             long userId,
             long orderId,
             long points,
@@ -73,7 +73,7 @@ namespace marketplace_practice.Services
         }
 
         // Списать баллы
-        public async Task<(bool success, string message, LoyaltyAccount updatedAccount)> DeductPoints(
+        public async Task<(bool success, string message, LoyaltyAccount? updatedAccount)> DeductPoints(
             long userId,
             long orderId,
             long points,

@@ -1,4 +1,6 @@
 ﻿using marketplace_practice.Controllers.dto;
+using marketplace_practice.Middlewares;
+using marketplace_practice.Services.dto;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +10,8 @@ namespace marketplace_practice.Controllers
 {
     [ApiController]
     [Route("auth")]
+    [Produces("application/json")]
+    [ApiExplorerSettings(GroupName = "Auth")]
     public class AuthController : Controller
     {
         private readonly IAuthService _authService;
@@ -19,47 +23,12 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
-        [HttpPost("register")]
+        [HttpGet("confirm-email-and-sign-in")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
-        {
-            try
-            {
-                var result = await _authService.RegisterAsync(
-                    registerDto.Email,
-                    registerDto.Password,
-                    registerDto.Role,
-                    registerDto.FirstName,
-                    registerDto.LastName);
-
-                // Я думаю, при регистрации токены не нужны,
-                // так как для полноценного доступа нужно еще подтвердить почту
-
-                if (result.IsSuccess)
-                {
-                    _logger.LogInformation("Пользователь успешно зарегистрировать в системе: {UserName}", registerDto.Email);
-                    return Ok(new
-                    {
-                        User = result.Value!.User,
-                        EmailVerificationToken = result.Value!.emailVerificationToken
-                    });
-                }
-
-                _logger.LogWarning("Ошибка при регистрации пользователя в системе: {Errors}",
-                    string.Join(", ", result.Errors));
-
-                return BadRequest(new { Errors = result.Errors });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при регистрации пользователя в системе");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
-
-        [HttpGet("confirm-email")]
-        [AllowAnonymous]
+        [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ConfirmEmail(
             [FromQuery] string userId,
             [FromQuery] string token)
@@ -80,35 +49,42 @@ namespace marketplace_practice.Controllers
                         new CookieOptions
                         {
                             HttpOnly = true,
-                            Secure = false,
+                            Secure = true,
                             SameSite = SameSiteMode.Strict,
-                            Expires = DateTime.UtcNow.AddDays(10),
+                            Expires = DateTime.UtcNow.AddDays(7),
                             Path = "/"
                         });
 
-                    _logger.LogInformation("Email подтверждён и пользователь вошёл в систему: {UserId}", userId);
-                    return Ok(new
-                    {
-                        AccessToken = result.Value!.AccessToken,
-                        RefreshToken = result.Value!.RefreshToken
-                    });
+                    _logger.LogInformation("Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему", userId);
+                    return Ok(result.Value);
                 }
 
-                _logger.LogWarning("Ошибка подтверждения email: {UserId} - {Errors}",
+                _logger.LogWarning("Ошибка подтверждения email пользователя с ID = '{UserId}': {Errors}",
                     userId, string.Join(", ", result.Errors));
 
-                return BadRequest(new { Errors = result.Errors });
+
+                var firstError = result.Errors.FirstOrDefault();
+                return firstError switch
+                {
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    _ => BadRequest(new { Errors = result.Errors })
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка подтверждения email: {UserId}", userId);
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка подтверждения email пользователя с ID = '{UserId}'", userId);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpPost("login")]
         [AllowAnonymous]
+        [ValidateModel]
+        [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             try
@@ -123,100 +99,88 @@ namespace marketplace_practice.Controllers
                         {
                             HttpOnly = true,
                             Secure = true, // Только HTTPS
-                            SameSite = SameSiteMode.Strict
+                            SameSite = SameSiteMode.Strict,
+                            Expires = DateTime.UtcNow.AddDays(7),
+                            Path = "/"
                         });
 
-                    _logger.LogInformation("Пользователь успешно вошёл в систему: {UserName}", loginDto.Email);
-                    return Ok(new
-                    {
-                        AccessToken = result.Value!.AccessToken,
-                        RefreshToken = result.Value!.RefreshToken
-                    });
+                    _logger.LogInformation("Пользователь '{UserName}' успешно вошёл в систему", loginDto.Email);
+                    return Ok(result.Value);
                 }
 
-                _logger.LogWarning("Ошибка при входе в аккаунт: {UserName} - {Errors}",
+                _logger.LogWarning("Ошибка при входе пользователя '{UserName}' в систему: {Errors}",
                     loginDto.Email, string.Join(", ", result.Errors));
 
                 var firstError = result.Errors.FirstOrDefault();
                 return firstError switch
                 {
-                    "Аккаунт временно заблокирован" => StatusCode(
-                        StatusCodes.Status403Forbidden,
-                        new { Error = firstError }),
-
-                    //"Требуется двухфакторная аутентификация" => StatusCode(
-                    //    StatusCodes.Status402PaymentRequired,
-                    //    new { Error = firstError }),
-
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    "Аккаунт временно заблокирован" => StatusCode(403, new { Error = firstError }),
                     _ => Unauthorized(new { Errors = result.Errors })
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при входе пользователя {UserName}", loginDto.Email);
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка при входе пользователя '{UserName}' в систему", loginDto.Email);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
-        [HttpPost("refresh-token")]
-        [AllowAnonymous]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
-        {
-            try
-            {
-                var result = await _authService.RefreshTokenAsync(refreshTokenDto.RefreshToken);
+        //[HttpPost("refresh-token")]
+        //[AllowAnonymous]
+        //[ValidateModel]
+        //[ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        //{
+        //    try
+        //    {
+        //        var result = await _authService.RefreshTokenAsync(refreshTokenDto.RefreshToken);
 
-                if (result.IsSuccess)
-                {
-                    Response.Cookies.Append("refreshToken",
-                        result.Value!.RefreshToken.Value,
-                        new CookieOptions
-                        {
-                            HttpOnly = true,
-                            Secure = true, // Только HTTPS
-                            SameSite = SameSiteMode.Strict
-                        });
+        //        if (result.IsSuccess)
+        //        {
+        //            Response.Cookies.Append("refreshToken",
+        //                result.Value!.RefreshToken.Value,
+        //                new CookieOptions
+        //                {
+        //                    HttpOnly = true,
+        //                    Secure = true, // Только HTTPS
+        //                    SameSite = SameSiteMode.Strict,
+        //                    Expires = DateTime.UtcNow.AddDays(7),
+        //                    Path = "/"
+        //                });
 
-                    return Ok(new
-                    {
-                        AccessToken = result.Value!.AccessToken,
-                        RefreshToken = result.Value!.RefreshToken
-                    });
-                }
-                else
-                {
-                    return BadRequest("Пользователь не аутентифицирован");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при обновлении токена");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
+        //            return Ok(result.Value);
+        //        }
 
-        // ================================= ТЕСТОВЫЕ КОНТРОЛЛЕРЫ =======================================
+        //        _logger.LogWarning("Ошибка при обновлении токена доступа: {Errors}",
+        //            string.Join(", ", result.Errors));
 
-        [Authorize(Roles = "Продавец")]
-        [HttpGet("authorize-test-seller")]
-        public IActionResult LoginTestSeller()
-        {
-            return Ok("Пользователь аутентифицирован");
-        }
-
-        [Authorize(Roles = "Покупатель")]
-        [HttpGet("authorize-test-buyer")]
-        public IActionResult LoginTestBuyer()
-        {
-            return Ok("Пользователь аутентифицирован");
-        }
-
-        // ==============================================================================================
+        //        var firstError = result.Errors.FirstOrDefault();
+        //        return firstError switch
+        //        {
+        //            "Пользователь не найден" => NotFound(new { Error = firstError }),
+        //            "Время жизни токена истекло" => Unauthorized(),
+        //            _ => BadRequest(new { Errors = result.Errors })
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Ошибка при обновлении токена");
+        //        return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+        //    }
+        //}
 
         [HttpPost("logout")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Logout()
         {
             try
@@ -232,21 +196,34 @@ namespace marketplace_practice.Controllers
                         SameSite = SameSiteMode.Strict
                     });
 
-                    return Ok("Вы успешно вышли из системы");
+                    _logger.LogInformation("Пользователь '{UserName}' успешно вышел из системы", User.Identity?.Name);
+                    return NoContent();
                 }
 
-                return BadRequest(new { Errors = result.Errors });
+                _logger.LogWarning("Ошибка при выходе пользователя '{UserName}' из системы: {Errors}",
+                    User.Identity?.Name, string.Join(", ", result.Errors));
+
+                var firstError = result.Errors.FirstOrDefault();
+                return firstError switch
+                {
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    _ => BadRequest(new { Errors = result.Errors })
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при выходе из системы");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка при выходе пользователя '{UserName}' из системы", User.Identity?.Name);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpPost("recovery")]
         [AllowAnonymous]
+        [ValidateModel]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Recovery([FromBody] EmailDto emailDto)
         {
             try
@@ -255,24 +232,40 @@ namespace marketplace_practice.Controllers
 
                 if (result.IsSuccess)
                 {
+                    _logger.LogInformation(
+                        "Запрос на сброс пароля пользователя '{UserName}' успешно отправлен на электронную почту",
+                        emailDto.Email);
+
                     return Ok(new
                     {
                         ResetToken = result.Value  // <--- Только для тестов
                     });
                 }
 
-                return BadRequest(new { Errors = result.Errors });
+                _logger.LogWarning("Ошибка при сбросе пароля пользователя '{UserName}': {Errors}",
+                    emailDto.Email, string.Join(", ", result.Errors));
+
+                var firstError = result.Errors.FirstOrDefault();
+                return firstError switch
+                {
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    _ => BadRequest(new { Errors = result.Errors })
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при сбросе пароля");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка при сбросе пароля пользователя '{UserName}'", emailDto.Email);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpPost("reset-password")]
         [AllowAnonymous]
+        [ValidateModel]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
         {
             try
@@ -284,21 +277,36 @@ namespace marketplace_practice.Controllers
 
                 if (result.IsSuccess)
                 {
-                    return Ok(new { Message = "Пароль успешно изменён" });
+                    _logger.LogInformation("Пароль пользователя '{UserName}' успешно изменён", resetPasswordDto.Email);
+                    return Ok(new { Success = true, Message = "Пароль успешно изменён" });
                 }
 
-                return BadRequest(new { Errors = result.Errors });
+                _logger.LogWarning("Ошибка при обновлении пароля пользователя '{UserName}': {Errors}",
+                    resetPasswordDto.Email, string.Join(", ", result.Errors));
+
+                var firstError = result.Errors.FirstOrDefault();
+                return firstError switch
+                {
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    _ => BadRequest(new { Errors = result.Errors })
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при сбросе пароля");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка при обновлении пароля пользователя '{UserName}'", resetPasswordDto.Email);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpPost("change-email")]
         [Authorize]
+        [ValidateModel]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ChangeEmail([FromBody] EmailDto emailDto)
         {
             try
@@ -308,24 +316,40 @@ namespace marketplace_practice.Controllers
 
                 if (result.IsSuccess)
                 {
+                    _logger.LogInformation(
+                        "Запрос на обновление электронной почты пользователя '{UserName}' успешно отправлен на новую электронную почту",
+                        User.Identity?.Name);
+
                     return Ok(new
                     {
                         Token = result.Value  // <--- Только для тестов
                     });
                 }
 
-                return BadRequest(new { Errors = result.Errors });
+                _logger.LogWarning("Ошибка при изменении email пользователя '{UserName}': {Errors}",
+                    User.Identity?.Name, string.Join(", ", result.Errors));
+
+                var firstError = result.Errors.FirstOrDefault();
+                return firstError switch
+                {
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    "Email уже используется" => Conflict(new { Error = firstError }),
+                    _ => BadRequest(new { Errors = result.Errors })
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при изменении email");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка при изменении email пользователя '{UserName}'", User.Identity?.Name);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpGet("confirm-email-change")]
         [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ConfirmEmailChange(
             [FromQuery] string userId,
             [FromQuery] string newEmail,
@@ -337,16 +361,24 @@ namespace marketplace_practice.Controllers
 
                 if (result.IsSuccess)
                 {
-                    return Ok(new { Message = "Email успешно изменён" });
+                    _logger.LogInformation("Пароль пользователя с ID = '{UserId}' успешно изменён", userId);
+                    return Ok(new { Success = true, Message = "Email успешно изменён" });
                 }
 
-                return BadRequest(new { Errors = result.Errors });
+                _logger.LogWarning("Ошибка при изменении email пользователя с ID = '{UserId}': {Errors}",
+                    userId, string.Join(", ", result.Errors));
+
+                var firstError = result.Errors.FirstOrDefault();
+                return firstError switch
+                {
+                    "Пользователь не найден" => NotFound(new { Error = firstError }),
+                    _ => BadRequest(new { Errors = result.Errors })
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при изменении email");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { Error = "Внутренняя ошибка сервера" });
+                _logger.LogError(ex, "Ошибка при изменении email пользователя с ID = '{UserId}'", userId);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
     }

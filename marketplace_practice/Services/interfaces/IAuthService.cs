@@ -6,7 +6,6 @@ namespace marketplace_practice.Services.interfaces
 {
     public interface IAuthService
     {
-        public Task<Result<RegisterResultDto>> RegisterAsync(string email, string password, string role, string? firstName, string? lastName);
         public Task<Result<AuthTokensDto>> ConfirmEmailAndSignInAsync(string userId, string token);
         public Task<Result<AuthTokensDto>> LoginAsync(string email, string password, bool rememberMe);
         public Task<Result<AuthTokensDto>> RefreshTokenAsync(string token);

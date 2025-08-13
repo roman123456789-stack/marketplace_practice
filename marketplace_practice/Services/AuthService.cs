@@ -12,7 +12,6 @@ namespace marketplace_practice.Services
     public class AuthService : IAuthService
     {
         private readonly UserManager<User> _userManager;
-        private readonly RoleManager<Role> _roleManager;
         private readonly SignInManager<User> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly ILoyaltyService _loyaltyService;
@@ -27,105 +26,10 @@ namespace marketplace_practice.Services
             IEmailService emailService)
         {
             _userManager = userManager;
-            _roleManager = roleManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _loyaltyService = loyaltyService;
             _emailService = emailService;
-        }
-
-        public async Task<Result<RegisterResultDto>> RegisterAsync(
-            string email,
-            string password,
-            string userRole,
-            string? firstName,
-            string? lastName)
-        {
-            try
-            {
-                // Проверка пользователя
-                var existingUser = await _userManager.FindByEmailAsync(email);
-                if (existingUser != null)
-                {
-                    return Result<RegisterResultDto>.Failure("Пользователь с таким email уже существует");
-                }
-
-                // Проверка роли
-                var role = await _roleManager.FindByNameAsync(userRole.Trim().ToUpper());
-                if (role == null)
-                {
-                    return Result<RegisterResultDto>.Failure($"Роль '{userRole}' не найдена. Допустимые значения: Покупатель, Продавец");
-                }
-
-                // Создание пользователя
-                var user = new User
-                {
-                    UserName = email,
-                    Email = email,
-                    FirstName = firstName ?? string.Empty,
-                    LastName = lastName ?? string.Empty,
-                    IsActive = true,
-                    EmailConfirmed = false,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                // Создание пользователя (без подтверждения email)
-                var createUserResult = await _userManager.CreateAsync(user, password);
-                if (createUserResult.Succeeded)
-                {
-                    // Генерация токена подтверждения email и его отправка на почту
-                    //var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    //await _emailService.SendEmailConfirmationAsync(dto.Email, user.FirstName, user.Id, token);
-
-                    // Для корректной работы нужно настроить "EmailConfig" в appsettings.json
-                }
-                else
-                {
-                    return Result<RegisterResultDto>.Failure(createUserResult.Errors.Select(e => e.Description));
-                }
-
-                // Назначение роли пользователю
-                var addRoleResult = await _userManager.AddToRoleAsync(user, role.Name);
-                if (!addRoleResult.Succeeded)
-                {
-                    return Result<RegisterResultDto>.Failure(addRoleResult.Errors.Select(e => e.Description));
-                }
-
-                await _userManager.UpdateAsync(user);
-
-                // Создание аккаунта лояльности
-                var _loyaltyAccount = await _loyaltyService.GetOrCreateAccount(user.Id);
-
-                // Создание DTO
-                return Result<RegisterResultDto>.Success(new RegisterResultDto
-                {
-                    User = new UserDto(user)
-                    {
-                        Roles = new List<RoleDto>
-                        {
-                            new RoleDto
-                                {
-                                Id = role.Id,
-                                Name = role.Name,
-                                Description = role.Description
-                            }
-                        },
-                        LoyaltyAccount = new LoyaltyAccountDto
-                        {
-                            Id = _loyaltyAccount.Id,
-                            Balance = _loyaltyAccount.Balance,
-                            CreatedAt = _loyaltyAccount.CreatedAt,
-                            UpdatedAt = _loyaltyAccount.UpdatedAt
-                        }
-                    },
-                    emailVerificationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user) // временно
-                });
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
         }
 
         public async Task<Result<AuthTokensDto>> ConfirmEmailAndSignInAsync(string userId, string token)
@@ -162,7 +66,7 @@ namespace marketplace_practice.Services
 
                 return Result<AuthTokensDto>.Success(authTokens);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -203,7 +107,7 @@ namespace marketplace_practice.Services
 
                 return Result<AuthTokensDto>.Success(authTokens);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -301,7 +205,7 @@ namespace marketplace_practice.Services
 
                 return Result<AuthTokensDto>.Success(authTokens);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -327,7 +231,7 @@ namespace marketplace_practice.Services
 
                 return Result<string>.Success(string.Empty);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -341,19 +245,18 @@ namespace marketplace_practice.Services
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user == null)
                 {
-                    // Намеренно не сообщаем, что пользователь не найден
-                    return Result<string>.Success(string.Empty);
+                    return Result<string>.Failure("Пользователь не найден");
                 }
 
                 // Генерация токена сброса пароля
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
                 // Отправка email
-                await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
+                // await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
 
                 return Result<string>.Success(token);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -383,7 +286,7 @@ namespace marketplace_practice.Services
 
                 return Result<string>.Success(string.Empty);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -413,7 +316,7 @@ namespace marketplace_practice.Services
 
                 return Result<string>.Success(token);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -447,7 +350,7 @@ namespace marketplace_practice.Services
 
                 return Result<string>.Success(token);
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }

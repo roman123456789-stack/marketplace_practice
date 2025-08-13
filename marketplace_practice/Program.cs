@@ -1,5 +1,5 @@
 using marketplace_practice;
-using marketplace_practice.Utils;
+using marketplace_practice.Middlewares;
 using marketplace_practice.Models;
 using marketplace_practice.Services;
 using marketplace_practice.Services.interfaces;
@@ -28,6 +28,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ILoyaltyService, LoyaltyService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -53,7 +55,10 @@ builder.Services.AddIdentity<User, marketplace_practice.Models.Role>(options =>
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+    c.SwaggerDoc("Auth", new OpenApiInfo { Title = "Auth API", Version = "v1" });
+    c.SwaggerDoc("Users", new OpenApiInfo { Title = "Users API", Version = "v1" });
+    c.SwaggerDoc("Products", new OpenApiInfo { Title = "Products API", Version = "v1" });
+    c.SwaggerDoc("Default", new OpenApiInfo { Title = "Default API", Version = "v1" });
 
     // Добавляем поддержку JWT в Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -154,7 +159,12 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/Auth/swagger.json", "Auth");
+        c.SwaggerEndpoint("/swagger/Users/swagger.json", "Users");
+        c.SwaggerEndpoint("/swagger/Products/swagger.json", "Products");
+    });
 }
 
 app.UseAuthentication();

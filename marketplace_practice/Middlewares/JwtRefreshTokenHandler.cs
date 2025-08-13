@@ -8,7 +8,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 
-namespace marketplace_practice.Utils
+namespace marketplace_practice.Middlewares
 {
     public class JwtRefreshTokenHandler : AuthenticationHandler<JwtRefreshTokenOptions>
     {
