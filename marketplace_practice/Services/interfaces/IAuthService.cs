@@ -1,4 +1,4 @@
-﻿using marketplace_practice.Services.dto;
+﻿using marketplace_practice.Services.dto.Auth;
 using marketplace_practice.Services.service_models;
 using System.Security.Claims;
 

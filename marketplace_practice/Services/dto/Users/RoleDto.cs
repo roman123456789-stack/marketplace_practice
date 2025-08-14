@@ -1,4 +1,4 @@
-﻿namespace marketplace_practice.Services.dto
+﻿namespace marketplace_practice.Services.dto.Users
 {
     public class RoleDto
     {

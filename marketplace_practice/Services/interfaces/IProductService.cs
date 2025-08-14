@@ -1,5 +1,5 @@
 ﻿using marketplace_practice.Models.Enums;
-using marketplace_practice.Services.dto;
+using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.service_models;
 using System.Security.Claims;
 
@@ -17,9 +17,10 @@ namespace marketplace_practice.Services.interfaces
             string? subcategory,
             ICollection<string>? imagesUrl);
 
-        public Task<Result<ProductDto>> GetProductByIdAsync(string productId);
+        public Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId);
 
         public Task<Result<ProductDto>> UpdateProductAsync(
+            ClaimsPrincipal userPrincipal,
             string productId,
             string? name,
             string? description,
@@ -29,6 +30,6 @@ namespace marketplace_practice.Services.interfaces
             string? subcategory,
             ICollection<string>? imagesUrl);
 
-        public Task<Result<string>> DeleteProductAsync(string productId);
+        public Task<Result<string>> DeleteProductAsync(ClaimsPrincipal userPrincipal, string productId);
     }
 }

@@ -30,6 +30,7 @@ builder.Services.AddScoped<ILoyaltyService, LoyaltyService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -58,6 +59,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("Auth", new OpenApiInfo { Title = "Auth API", Version = "v1" });
     c.SwaggerDoc("Users", new OpenApiInfo { Title = "Users API", Version = "v1" });
     c.SwaggerDoc("Products", new OpenApiInfo { Title = "Products API", Version = "v1" });
+    c.SwaggerDoc("Orders", new OpenApiInfo { Title = "Orders API", Version = "v1" });
     c.SwaggerDoc("Default", new OpenApiInfo { Title = "Default API", Version = "v1" });
 
     // Добавляем поддержку JWT в Swagger
@@ -164,6 +166,7 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/Auth/swagger.json", "Auth");
         c.SwaggerEndpoint("/swagger/Users/swagger.json", "Users");
         c.SwaggerEndpoint("/swagger/Products/swagger.json", "Products");
+        c.SwaggerEndpoint("/swagger/Orders/swagger.json", "Orders");
     });
 }
 

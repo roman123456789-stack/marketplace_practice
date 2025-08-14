@@ -1,6 +1,7 @@
 ﻿using marketplace_practice.Models.Enums;
+using marketplace_practice.Services.dto.Orders;
 
-namespace marketplace_practice.Services.dto
+namespace marketplace_practice.Services.dto.Products
 {
     public class ProductDto
     {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace marketplace_practice.Controllers.dto
+namespace marketplace_practice.Controllers.dto.Auth
 {
     public class RefreshTokenDto
     {

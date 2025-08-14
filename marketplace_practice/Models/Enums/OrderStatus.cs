@@ -5,24 +5,33 @@ namespace marketplace_practice.Models.Enums
     public enum OrderStatus
     {
         [Display(Name = "Новый")]
-        New = 1,
+        New = 0,
 
         [Display(Name = "В обработке")]
-        Processing = 2,
+        Processing = 1,
+
+        [Display(Name = "Подтвержден")]
+        Confirmed = 2,
 
         [Display(Name = "Оплачен")]
         Paid = 3,
 
-        [Display(Name = "Отправлен")]
+        [Display(Name = "В пути")]
         Shipped = 4,
 
         [Display(Name = "Доставлен")]
         Delivered = 5,
 
+        [Display(Name = "Завершен")]
+        Completed = 6,
+
         [Display(Name = "Отменен")]
-        Cancelled = 6,
+        Cancelled = 7,
 
         [Display(Name = "Возврат")]
-        Refunded = 7
+        Refunded = 8,
+
+        [Display(Name = "На удержании")]
+        OnHold = 9
     }
 }

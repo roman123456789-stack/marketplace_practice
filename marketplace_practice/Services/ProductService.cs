@@ -1,6 +1,7 @@
 ﻿using marketplace_practice.Models;
 using marketplace_practice.Models.Enums;
-using marketplace_practice.Services.dto;
+using marketplace_practice.Services.dto.Orders;
+using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.EntityFrameworkCore;
@@ -162,11 +163,18 @@ namespace marketplace_practice.Services
             }
         }
 
-        public async Task<Result<ProductDto>> GetProductByIdAsync(string productId)
+        public async Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId)
         {
             if (!long.TryParse(productId, out var id))
             {
                 return Result<ProductDto>.Failure("Неверный формат ID товара");
+            }
+
+            // Получение текущего пользователя
+            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            {
+                return Result<ProductDto>.Failure("Не удалось идентифицировать пользователя");
             }
 
             try
@@ -184,6 +192,12 @@ namespace marketplace_practice.Services
                 if (product == null)
                 {
                     return Result<ProductDto>.Failure("Товар не найден");
+                }
+
+                // Проверка прав доступа
+                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                {
+                    return Result<ProductDto>.Failure("Нет доступа к данному товару");
                 }
 
                 var productDto = new ProductDto
@@ -220,6 +234,7 @@ namespace marketplace_practice.Services
         }
 
         public async Task<Result<ProductDto>> UpdateProductAsync(
+            ClaimsPrincipal userPrincipal,
             string productId,
             string? name,
             string? description,
@@ -232,6 +247,13 @@ namespace marketplace_practice.Services
             if (!long.TryParse(productId, out var id))
             {
                 return Result<ProductDto>.Failure("Неверный формат ID товара");
+            }
+
+            // Получение текущего пользователя
+            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            {
+                return Result<ProductDto>.Failure("Не удалось идентифицировать пользователя");
             }
 
             using var transaction = await _appDbContext.Database.BeginTransactionAsync();
@@ -286,9 +308,9 @@ namespace marketplace_practice.Services
                             {
                                 Category = await _appDbContext.Categories
                                     .FirstOrDefaultAsync(c => c.Name == newCategory)
-                                    ?? new Category 
-                                    { 
-                                        Name = newCategory, 
+                                    ?? new Category
+                                    {
+                                        Name = newCategory,
                                         CreatedAt = DateTime.UtcNow,
                                         UpdatedAt = DateTime.UtcNow,
                                         IsActive = true
@@ -332,6 +354,12 @@ namespace marketplace_practice.Services
                     product.ProductImages = productImages;
                 }
 
+                // Проверка прав доступа
+                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                {
+                    return Result<ProductDto>.Failure("Нет доступа к данному товару");
+                }
+
                 await _appDbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -370,11 +398,18 @@ namespace marketplace_practice.Services
             }
         }
 
-        public async Task<Result<string>> DeleteProductAsync(string productId)
+        public async Task<Result<string>> DeleteProductAsync(ClaimsPrincipal userPrincipal, string productId)
         {
             if (!long.TryParse(productId, out var id))
             {
                 return Result<string>.Failure("Неверный формат ID товара");
+            }
+
+            // Получение текущего пользователя
+            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            {
+                return Result<string>.Failure("Не удалось идентифицировать пользователя");
             }
 
             using var transaction = await _appDbContext.Database.BeginTransactionAsync();
@@ -391,6 +426,12 @@ namespace marketplace_practice.Services
                 if (product == null)
                 {
                     return Result<string>.Failure("Товар не найден");
+                }
+
+                // Проверка прав доступа
+                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                {
+                    return Result<string>.Failure("Нет доступа к данному товару");
                 }
 
                 _appDbContext.Products.Remove(product);

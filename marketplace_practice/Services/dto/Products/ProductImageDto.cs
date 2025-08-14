@@ -1,4 +1,4 @@
-﻿namespace marketplace_practice.Services.dto
+﻿namespace marketplace_practice.Services.dto.Products
 {
     public class ProductImageDto
     {

@@ -1,6 +1,6 @@
-﻿using marketplace_practice.Controllers.dto;
+﻿using marketplace_practice.Controllers.dto.Products;
 using marketplace_practice.Middlewares;
-using marketplace_practice.Services.dto;
+using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,14 +11,14 @@ namespace marketplace_practice.Controllers
     [Route("products")]
     [Produces("application/json")]
     [ApiExplorerSettings(GroupName = "Products")]
-    public class ProductsController : ControllerBase
+    public class ProductController : ControllerBase
     {
-        private readonly IProductService _productsService;
-        private readonly ILogger<UserController> _logger;
+        private readonly IProductService _productService;
+        private readonly ILogger<ProductController> _logger;
 
-        public ProductsController(IProductService productsService, ILogger<UserController> logger)
+        public ProductController(IProductService productsService, ILogger<ProductController> logger)
         {
-            _productsService = productsService;
+            _productService = productsService;
             _logger = logger;
         }
 
@@ -33,7 +33,7 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _productsService.CreateProductAsync(
+                var result = await _productService.CreateProductAsync(
                     User,
                     createProductDto.Name,
                     createProductDto.Description,
@@ -65,6 +65,7 @@ namespace marketplace_practice.Controllers
         [Authorize]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -72,7 +73,7 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _productsService.GetProductByIdAsync(productId);
+                var result = await _productService.GetProductByIdAsync(User, productId);
 
                 if (result.IsSuccess)
                 {
@@ -93,6 +94,7 @@ namespace marketplace_practice.Controllers
         [ValidateModel]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -102,7 +104,8 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _productsService.UpdateProductAsync(
+                var result = await _productService.UpdateProductAsync(
+                    User,
                     productId,
                     updateProductDto.Name,
                     updateProductDto.Description,
@@ -134,6 +137,7 @@ namespace marketplace_practice.Controllers
         [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -142,7 +146,7 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _productsService.DeleteProductAsync(productId);
+                var result = await _productService.DeleteProductAsync(User, productId);
 
                 if (result.IsSuccess)
                 {
@@ -169,10 +173,10 @@ namespace marketplace_practice.Controllers
             {
                 "Товар не найден" => NotFound(new { Error = firstError }),
                 "Не удалось идентифицировать пользователя"
-                    => StatusCode(403, new { Error = firstError }),
+                    => Unauthorized(new { Error = firstError }),
                 "Нельзя удалить товар, так как он используется в других записях"
                     => Conflict(new { Error = firstError }),
-                "Недостаточно прав для выполнения действия" => Forbid(),
+                "Нет доступа к данному товару" => Forbid(),
                 _ => BadRequest(new { Errors = errors })
             };
         }

@@ -1,4 +1,4 @@
-﻿namespace marketplace_practice.Controllers.dto
+﻿namespace marketplace_practice.Controllers.dto.Auth
 {
     public class EmailVerificationDto
     {

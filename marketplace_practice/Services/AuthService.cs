@@ -1,5 +1,5 @@
 ﻿using marketplace_practice.Models;
-using marketplace_practice.Services.dto;
+using marketplace_practice.Services.dto.Auth;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Identity;
