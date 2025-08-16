@@ -12,10 +12,6 @@ namespace marketplace_practice.Controllers.dto.Users
         [MinLength(8, ErrorMessage = "Пароль должен быть не менее 8 символов")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Роль обязательна")]
-        [RegularExpression("^(Покупатель|Продавец)$", ErrorMessage = "Роль может быть только 'Покупатель' или 'Продавец'")]
-        public string Role { get; set; } = string.Empty;
-
         [StringLength(100, ErrorMessage = "Имя не может быть длиннее 100 символов")]
         public string? FirstName { get; set; }
 

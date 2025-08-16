@@ -63,7 +63,7 @@ namespace marketplace_practice.Services
                 // Проверка валюты продуктов <--- нужно добавить позже
                 // какая-то логика...
 
-                // Получаем данные покупателя
+                // Получение данных покупателя
                 var buyer = await _appDbContext.Users
                     .Where(u => u.Id == buyerId)
                     .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.PhoneNumber })
@@ -74,7 +74,7 @@ namespace marketplace_practice.Services
                     return Result<OrderDto>.Failure("Покупатель не найден");
                 }
 
-                // Создаем заказ
+                // Создание заказа
                 var order = new Order
                 {
                     UserId = buyerId,
@@ -90,7 +90,7 @@ namespace marketplace_practice.Services
                     }
                 };
 
-                // Добавляем все товары в заказ
+                // Добавление всех товаров в заказ
                 foreach (var product in products)
                 {
                     order.OrderItems.Add(new OrderItem
@@ -103,12 +103,12 @@ namespace marketplace_practice.Services
                     });
                 }
 
-                // Сохраняем заказ
+                // Сохранение заказ
                 await _appDbContext.Orders.AddAsync(order);
                 await _appDbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Формируем DTO
+                // Создание DTO
                 var orderDto = new OrderDto
                 {
                     Id = order.Id,

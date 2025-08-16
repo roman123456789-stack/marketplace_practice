@@ -33,7 +33,6 @@ namespace marketplace_practice.Services
         public async Task<Result<(UserDto, string)>> CreateUserAsync(
             string email,
             string password,
-            string userRole,
             string? firstName,
             string? lastName)
         {
@@ -47,13 +46,6 @@ namespace marketplace_practice.Services
                 if (existingUser != null)
                 {
                     return Result<(UserDto, string)>.Failure("Пользователь с таким email уже существует");
-                }
-
-                // Проверка роли
-                var role = await _roleManager.FindByNameAsync(userRole.Trim().ToUpper());
-                if (role == null)
-                {
-                    return Result<(UserDto, string)>.Failure($"Роль '{userRole}' не найдена. Допустимые значения: Покупатель, Продавец");
                 }
 
                 // Создание пользователя
@@ -86,7 +78,7 @@ namespace marketplace_practice.Services
                 }
 
                 // Назначение роли пользователю
-                var addRoleResult = await _userManager.AddToRoleAsync(user, role.Name);
+                var addRoleResult = await _userManager.AddToRoleAsync(user, "Buyer");
                 if (!addRoleResult.Succeeded)
                 {
                     await transaction.RollbackAsync();

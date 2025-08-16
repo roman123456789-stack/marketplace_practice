@@ -25,7 +25,7 @@ namespace marketplace_practice.Controllers
         [HttpPost]
         [Authorize]
         [ValidateModel]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -45,7 +45,7 @@ namespace marketplace_practice.Controllers
                 if (result.IsSuccess)
                 {
                     _logger.LogInformation("Заказ успешно создан");
-                    return Ok(result.Value);
+                    return StatusCode(201, result.Value);
                 }
 
                 _logger.LogWarning("Ошибка при создании заказа: {Errors}",

@@ -31,7 +31,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddControllers();
+builder.Services.AddScoped<CartService>(); // добавить интерфейс
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -60,6 +60,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("Users", new OpenApiInfo { Title = "Users API", Version = "v1" });
     c.SwaggerDoc("Products", new OpenApiInfo { Title = "Products API", Version = "v1" });
     c.SwaggerDoc("Orders", new OpenApiInfo { Title = "Orders API", Version = "v1" });
+    c.SwaggerDoc("Carts", new OpenApiInfo { Title = "Carts API", Version = "v1" });
     c.SwaggerDoc("Default", new OpenApiInfo { Title = "Default API", Version = "v1" });
 
     // Добавляем поддержку JWT в Swagger
@@ -125,38 +126,6 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<marketplace_practice.Models.Role>>();
-
-    string[] roleNames = { "Покупатель", "Продавец" };
-    string description = "Стандартная роль пользователя";
-
-    foreach (var roleName in roleNames)
-    {
-        var roleExist = await roleManager.RoleExistsAsync(roleName);
-        if (!roleExist)
-        {
-            var role = new marketplace_practice.Models.Role
-            {
-                Name = roleName,
-                Description = description
-            };
-
-            var result = await roleManager.CreateAsync(role);
-            if (!result.Succeeded)
-            {
-                // Логируем ошибки, если не удалось создать роль
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                Console.WriteLine($"Ошибка при создании роли {roleName}: {errors}");
-            }
-            else
-            {
-                Console.WriteLine($"Роль '{roleName}' успешно создана.");
-            }
-        }
-    }
-}
 // HTTP pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -167,13 +136,13 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/Users/swagger.json", "Users");
         c.SwaggerEndpoint("/swagger/Products/swagger.json", "Products");
         c.SwaggerEndpoint("/swagger/Orders/swagger.json", "Orders");
+        c.SwaggerEndpoint("/swagger/Carts/swagger.json", "Carts");
     });
 }
 
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-app.UseHttpsRedirection();
 
 app.Run();

@@ -30,5 +30,7 @@ namespace marketplace_practice
         public DbSet<Group> Groups { get; set; }
         public DbSet<Subcategory> Subcategories { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Cart> Carts { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
     }
 }

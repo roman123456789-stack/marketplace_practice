@@ -35,7 +35,6 @@ namespace marketplace_practice.Controllers
                 var result = await _userService.CreateUserAsync(
                     createUserDto.Email,
                     createUserDto.Password,
-                    createUserDto.Role,
                     createUserDto.FirstName,
                     createUserDto.LastName);
 

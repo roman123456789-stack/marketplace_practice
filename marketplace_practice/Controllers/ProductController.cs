@@ -25,7 +25,7 @@ namespace marketplace_practice.Controllers
         [HttpPost]
         [Authorize]
         [ValidateModel]
-        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -46,7 +46,7 @@ namespace marketplace_practice.Controllers
                 if (result.IsSuccess)
                 {
                     _logger.LogInformation("Товар успешно добавлен в каталог");
-                    return Ok(result.Value);
+                    return StatusCode(201, result.Value);
                 }
 
                 _logger.LogWarning("Ошибка при добавлении товара в каталог: {Errors}",

@@ -9,7 +9,6 @@ namespace marketplace_practice.Services.interfaces
         public Task<Result<(UserDto, string)>> CreateUserAsync(
             string email,
             string password,
-            string userRole,
             string? firstName,
             string? lastName);
 

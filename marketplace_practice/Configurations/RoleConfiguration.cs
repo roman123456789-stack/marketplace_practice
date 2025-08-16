@@ -13,6 +13,23 @@ namespace marketplace_practice.Configurations
             builder.Property(r => r.Id);
             builder.Property(r => r.Name).HasMaxLength(100).IsRequired();
             builder.Property(r => r.Description);
+
+            builder.HasData(
+                new Role
+                {
+                    Id = 1,
+                    Name = "Admin",
+                    NormalizedName = "ADMIN",
+                    Description = "Администратор системы. Полный доступ."
+                },
+                new Role
+                {
+                    Id = 2,
+                    Name = "Buyer",
+                    NormalizedName = "BUYER",
+                    Description = "Покупатель. Базовые права на совершение покупок."
+                }
+            );
         }
     }
 }

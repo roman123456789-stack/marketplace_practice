@@ -17,5 +17,6 @@ namespace marketplace_practice.Models
         public LoyaltyAccount? LoyaltyAccount { get; set; }
         public ICollection<LoyaltyTransaction> LoyaltyTransactions { get; set; } = new List<LoyaltyTransaction>();
         public ICollection<Order> Orders { get; set; } = new List<Order>();
+        public Cart Cart { get; set; }
     }
 }
