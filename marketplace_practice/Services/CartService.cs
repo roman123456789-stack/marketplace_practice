@@ -1,13 +1,14 @@
 ﻿using marketplace_practice.Models;
 using marketplace_practice.Services.dto.Carts;
 using marketplace_practice.Services.dto.Products;
+using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace marketplace_practice.Services
 {
-    public class CartService
+    public class CartService : ICartService
     {
         private readonly AppDbContext _appDbContext;
 
@@ -107,12 +108,6 @@ namespace marketplace_practice.Services
 
             if (!string.IsNullOrEmpty(targetUserId))
             {
-                // Проверка прав администратора
-                if (userId != targetUserId && !userPrincipal.IsInRole("Admin"))
-                {
-                    return Result<ICollection<CartItemDto>>.Failure("Отказано в доступе к корзине");
-                }
-
                 // Преобразование строки в long
                 if (!long.TryParse(targetUserId, out var parsedUserId))
                 {

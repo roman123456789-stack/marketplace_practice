@@ -1,6 +1,0 @@
-@marketplace_practice_HostAddress = http://localhost:5218
-
-GET {{marketplace_practice_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -31,13 +31,24 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<CartService>(); // äîáàâèòü èíòåğôåéñ
+builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddEndpointsApiExplorer();
 
+// ÄËß ËÎÊÀËÜÍÎÃÎ ÇÀÏÓÑÊÀ
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+// ÄËß ÇÀÏÓÑÊÀ Â DOCKER
+//builder.Services.AddDbContext<AppDbContext>(options =>
+//{
+//    options.UseNpgsql(builder.Configuration.GetConnectionString(
+//        Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true"
+//            ? "DockerInternalConnection"
+//            : "DockerExternalConnection"
+//    ));
+//});
 
 builder.Services.AddIdentity<User, marketplace_practice.Models.Role>(options =>
 {

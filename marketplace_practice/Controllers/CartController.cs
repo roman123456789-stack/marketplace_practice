@@ -1,10 +1,9 @@
 ﻿using marketplace_practice.Controllers.dto.Carts;
 using marketplace_practice.Middlewares;
-using marketplace_practice.Services;
+using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.dto.Carts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace marketplace_practice.Controllers
 {
@@ -14,10 +13,10 @@ namespace marketplace_practice.Controllers
     [ApiExplorerSettings(GroupName = "Carts")]
     public class CartController : ControllerBase
     {
-        private readonly CartService _cartService; // добавить интерфейс
+        private readonly ICartService _cartService; // добавить интерфейс
         private readonly ILogger<CartController> _logger;
 
-        public CartController(CartService cartService, ILogger<CartController> logger)
+        public CartController(ICartService cartService, ILogger<CartController> logger)
         {
             _cartService = cartService;
             _logger = logger;
@@ -30,7 +29,7 @@ namespace marketplace_practice.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Create([FromBody] CreateCartDto createCartDto)
+        public async Task<IActionResult> AddCartItem([FromBody] CreateCartDto createCartDto)
         {
             try
             {
@@ -61,7 +60,7 @@ namespace marketplace_practice.Controllers
             }
         }
 
-        [HttpGet("{targetUserId?}")]
+        [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(ICollection<CartItemDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -69,29 +68,22 @@ namespace marketplace_practice.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Get([FromRoute] string? targetUserId = null)
+        public async Task<IActionResult> GetMyCart()
         {
-            try
-            {
-                var result = await _cartService.GetCartAsync(User, targetUserId);
+            return await GetCartInternal(null);
+        }
 
-                if (result.IsSuccess)
-                {
-                    return Ok(new { Cart = result.Value?.Select(ci => new
-                    {
-                        CartItemId = ci.CartItemId,
-                        Product = ci.productBriefInfo
-                    }) });
-                }
-
-                return HandleFailure(result.Errors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при получении списка товаров из корзины пользователя с ID = '{UserId}'",
-                    User.FindFirstValue(ClaimTypes.NameIdentifier));
-                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
-            }
+        [HttpGet("{targetUserId}")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ICollection<CartItemDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetUserCart(string targetUserId)
+        {
+            return await GetCartInternal(targetUserId);
         }
 
         [HttpDelete("{cartItemId}")]
@@ -123,6 +115,37 @@ namespace marketplace_practice.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при удалении товара c ID = '{CartId}' из корзины", cartItemId);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+
+
+        // =============================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ======================================
+
+        private async Task<IActionResult> GetCartInternal(string? targetUserId)
+        {
+            try
+            {
+                var result = await _cartService.GetCartAsync(User, targetUserId);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Cart = result.Value?.Select(ci => new
+                        {
+                            CartItemId = ci.CartItemId,
+                            Product = ci.productBriefInfo
+                        })
+                    });
+                }
+
+                return HandleFailure(result.Errors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении корзины");
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
