@@ -24,8 +24,8 @@ namespace marketplace_practice.Configurations
                 .IsRequired();
 
             builder.HasOne(ci => ci.Product)
-                .WithOne(p => p.CartItem)
-                .HasForeignKey<CartItem>(ci => ci.ProductId)
+                .WithMany(p => p.CartItems)
+                .HasForeignKey(ci => ci.ProductId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .IsRequired();
         }

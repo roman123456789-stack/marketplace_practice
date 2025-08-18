@@ -19,6 +19,6 @@ namespace marketplace_practice.Models
         public ICollection<FavoriteProduct> FavoriteProducts { get; set; } = new List<FavoriteProduct>();
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
         public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
-        public CartItem? CartItem { get; set; }
+        public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     }
 }

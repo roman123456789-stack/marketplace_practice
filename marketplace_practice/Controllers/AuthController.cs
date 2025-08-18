@@ -56,7 +56,7 @@ namespace marketplace_practice.Controllers
                         });
 
                     _logger.LogInformation("Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему", userId);
-                    return Ok(result.Value);
+                    return Ok(new { AccessToken = result.Value.AccessToken.Value });
                 }
 
                 _logger.LogWarning("Ошибка подтверждения email пользователя с ID = '{UserId}': {Errors}",
@@ -105,7 +105,7 @@ namespace marketplace_practice.Controllers
                         });
 
                     _logger.LogInformation("Пользователь '{UserName}' успешно вошёл в систему", loginDto.Email);
-                    return Ok(result.Value);
+                    return Ok(new { AccessToken = result.Value.AccessToken.Value });
                 }
 
                 _logger.LogWarning("Ошибка при входе пользователя '{UserName}' в систему: {Errors}",
@@ -153,7 +153,7 @@ namespace marketplace_practice.Controllers
         //                    Path = "/"
         //                });
 
-        //            return Ok(result.Value);
+        //            return Ok(new { AccessToken = result.Value.AccessToken.Value });
         //        }
 
         //        _logger.LogWarning("Ошибка при обновлении токена доступа: {Errors}",

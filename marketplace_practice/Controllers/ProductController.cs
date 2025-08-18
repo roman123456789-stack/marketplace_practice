@@ -89,6 +89,34 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize]
+        [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProductList([FromQuery] string? userId = null)
+        {
+            try
+            {
+                var result = await _productService.GetProductListAsync(User, userId);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(result.Value);
+                }
+
+                return HandleFailure(result.Errors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении товаров пользователя c ID = '{ProductId}'", userId);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+            }
+        }
+
         [HttpPatch("{productId}")]
         [Authorize]
         [ValidateModel]
@@ -176,7 +204,7 @@ namespace marketplace_practice.Controllers
                     => Unauthorized(new { Error = firstError }),
                 "Нельзя удалить товар, так как он используется в других записях"
                     => Conflict(new { Error = firstError }),
-                "Нет доступа к данному товару" => Forbid(),
+                "Отказано в доступе" => Forbid(),
                 _ => BadRequest(new { Errors = errors })
             };
         }

@@ -13,7 +13,7 @@ namespace marketplace_practice.Controllers
     [ApiExplorerSettings(GroupName = "Carts")]
     public class CartController : ControllerBase
     {
-        private readonly ICartService _cartService; // добавить интерфейс
+        private readonly ICartService _cartService;
         private readonly ILogger<CartController> _logger;
 
         public CartController(ICartService cartService, ILogger<CartController> logger)
@@ -68,22 +68,31 @@ namespace marketplace_practice.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetMyCart()
+        public async Task<IActionResult> GetCart([FromQuery] string? userId = null)
         {
-            return await GetCartInternal(null);
-        }
+            try
+            {
+                var result = await _cartService.GetCartAsync(User, userId);
 
-        [HttpGet("{targetUserId}")]
-        [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(ICollection<CartItemDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetUserCart(string targetUserId)
-        {
-            return await GetCartInternal(targetUserId);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Cart = result.Value?.Select(ci => new
+                        {
+                            CartItemId = ci.CartItemId,
+                            Product = ci.productBriefInfo
+                        })
+                    });
+                }
+
+                return HandleFailure(result.Errors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении корзины");
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+            }
         }
 
         [HttpDelete("{cartItemId}")]
@@ -119,37 +128,6 @@ namespace marketplace_practice.Controllers
             }
         }
 
-
-
-        // =============================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ======================================
-
-        private async Task<IActionResult> GetCartInternal(string? targetUserId)
-        {
-            try
-            {
-                var result = await _cartService.GetCartAsync(User, targetUserId);
-
-                if (result.IsSuccess)
-                {
-                    return Ok(new
-                    {
-                        Cart = result.Value?.Select(ci => new
-                        {
-                            CartItemId = ci.CartItemId,
-                            Product = ci.productBriefInfo
-                        })
-                    });
-                }
-
-                return HandleFailure(result.Errors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при получении корзины");
-                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
-
         private IActionResult HandleFailure(IEnumerable<string> errors)
         {
             var firstError = errors.FirstOrDefault();
@@ -158,7 +136,7 @@ namespace marketplace_practice.Controllers
                 "Товар не найден в корзине" => NotFound(new { Error = firstError }),
                 "Не удалось идентифицировать пользователя"
                     => Unauthorized(new { Error = firstError }),
-                "Отказано в доступе к корзине" => Forbid(),
+                "Отказано в доступе" => Forbid(),
                 _ => BadRequest(new { Errors = errors })
             };
         }

@@ -108,6 +108,12 @@ namespace marketplace_practice.Services
 
             if (!string.IsNullOrEmpty(targetUserId))
             {
+                // Проверка прав администратора
+                if (userId != targetUserId && !userPrincipal.IsInRole("Admin"))
+                {
+                    return Result<ICollection<CartItemDto>>.Failure("Отказано в доступе");
+                }
+
                 // Преобразование строки в long
                 if (!long.TryParse(targetUserId, out var parsedUserId))
                 {
@@ -182,7 +188,7 @@ namespace marketplace_practice.Services
                 // Проверка прав доступа
                 if (cartItem.Cart.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
                 {
-                    return Result<string>.Failure("Отказано в доступе к корзине");
+                    return Result<string>.Failure("Отказано в доступе");
                 }
 
                 // Удаление элемента

@@ -2,6 +2,7 @@
 using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto.Orders;
 using marketplace_practice.Services.dto.Products;
+using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.EntityFrameworkCore;
@@ -47,8 +48,8 @@ namespace marketplace_practice.Services
                     .Include(g => g.Subcategory)
                     .FirstOrDefaultAsync(g => g.Category.Name == category &&
                         (string.IsNullOrEmpty(subcategory)
-                            ? g.Subcategory == null
-                            : g.Subcategory.Name == subcategory));
+                        ? g.Subcategory == null
+                        : g.Subcategory != null && g.Subcategory.Name == subcategory));
 
                 if (group == null)
                 {
@@ -125,7 +126,7 @@ namespace marketplace_practice.Services
                 // Получение владельца для DTO
                 var owner = await _appDbContext.Users
                     .Where(u => u.Id == ownerId)
-                    .Select(u => new { u.UserName, u.FirstName, u.LastName })
+                    .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.PhoneNumber })
                     .FirstOrDefaultAsync();
 
                 await transaction.CommitAsync();
@@ -136,7 +137,14 @@ namespace marketplace_practice.Services
                     Name = product.Name,
                     Description = product.Description,
                     Price = product.Price,
-                    OwnerName = owner != null ? $"{owner.FirstName} {owner.LastName}" : owner?.UserName,
+                    Owner = new UserBriefInfoDto
+                    {
+                        Id = owner!.Id,
+                        FirstName = owner.FirstName,
+                        LastName = owner.LastName,
+                        Email = owner.Email!,
+                        PhoneNumber = owner.PhoneNumber,
+                    },
                     Currency = currency,
                     IsActive = product.IsActive,
                     CreatedAt = product.CreatedAt,
@@ -153,7 +161,9 @@ namespace marketplace_practice.Services
                     {
                         Url = pi.Url,
                         IsMain = pi.IsMain
-                    }).ToList()
+                    }).ToList(),
+                    IsFavirite = false,
+                    IsAdded = false
                 });
             }
             catch
@@ -165,6 +175,7 @@ namespace marketplace_practice.Services
 
         public async Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId)
         {
+            // Валидация ID товара
             if (!long.TryParse(productId, out var id))
             {
                 return Result<ProductDto>.Failure("Неверный формат ID товара");
@@ -179,53 +190,140 @@ namespace marketplace_practice.Services
 
             try
             {
-                var product = await _appDbContext.Products
+                // Оптимизированный запрос с проекцией в DTO
+                var productDto = await _appDbContext.Products
                     .AsNoTracking()
-                    .Include(p => p.User)
-                    .Include(p => p.Groups)
-                        .ThenInclude(g => g.Category)
-                    .Include(p => p.Groups)
-                        .ThenInclude(g => g.Subcategory)
-                    .Include(p => p.ProductImages)
-                    .FirstOrDefaultAsync(p => p.Id == id);
+                    .Where(p => p.Id == id)
+                    .Select(p => new ProductDto
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        Currency = p.Currency,
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
+                        Owner = new UserBriefInfoDto
+                        {
+                            Id = p.User.Id,
+                            FirstName = p.User.FirstName,
+                            LastName = p.User.LastName,
+                            Email = p.User.Email!,
+                            PhoneNumber = p.User.PhoneNumber
+                        },
+                        Groups = p.Groups.Select(g => new GroupDto
+                        {
+                            Category = g.Category.Name,
+                            Subcategory = g.Subcategory != null ? g.Subcategory.Name : null
+                        }).ToList(),
+                        ProductImages = p.ProductImages
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList(),
+                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                    })
+                    .FirstOrDefaultAsync();
 
-                if (product == null)
+                if (productDto == null)
                 {
                     return Result<ProductDto>.Failure("Товар не найден");
                 }
 
                 // Проверка прав доступа
-                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (productDto.Owner.Id != currentUserId && !userPrincipal.IsInRole("Admin"))
                 {
-                    return Result<ProductDto>.Failure("Нет доступа к данному товару");
+                    return Result<ProductDto>.Failure("Отказано в доступе");
                 }
 
-                var productDto = new ProductDto
-                {
-                    Id = product.Id,
-                    Name = product.Name,
-                    Description = product.Description,
-                    Price = product.Price,
-                    Currency = product.Currency,
-                    IsActive = product.IsActive,
-                    CreatedAt = product.CreatedAt,
-                    UpdatedAt = product.UpdatedAt,
-                    OwnerName = product.User?.FirstName != null
-                        ? $"{product.User.FirstName} {product.User.LastName}"
-                        : product.User?.UserName,
-                    Groups = product.Groups.Select(g => new GroupDto
-                    {
-                        Category = g.Category.Name,
-                        Subcategory = g.Subcategory?.Name
-                    }).ToList(),
-                    ProductImages = product.ProductImages.Select(pi => new ProductImageDto
-                    {
-                        Url = pi.Url,
-                        IsMain = pi.IsMain
-                    }).OrderByDescending(pi => pi.IsMain).ToList()
-                };
-
                 return Result<ProductDto>.Success(productDto);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<Result<ICollection<ProductDto>>> GetProductListAsync(
+            ClaimsPrincipal userPrincipal,
+            string? targetUserId = null)
+        {
+            // Получение пользователя из ClaimsPrincipal
+            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            {
+                return Result<ICollection<ProductDto>>.Failure("Не удалось идентифицировать пользователя");
+            }
+
+            // Определение ID целевого пользователя
+            long? resolvedUserId = null;
+
+            if (!string.IsNullOrEmpty(targetUserId))
+            {
+                // Проверка прав администратора
+                if (userId != targetUserId && !userPrincipal.IsInRole("Admin"))
+                {
+                    return Result<ICollection<ProductDto>>.Failure("Отказано в доступе");
+                }
+
+                // Преобразование строки в long
+                if (!long.TryParse(targetUserId, out var parsedUserId))
+                {
+                    return Result<ICollection<ProductDto>>.Failure("Некорректный формат ID пользователя");
+                }
+                resolvedUserId = parsedUserId;
+            }
+            else
+            {
+                resolvedUserId = currentUserId;
+            }
+
+            try
+            {
+                var productList = await _appDbContext.Products
+                    .AsNoTracking()
+                    .Where(p => p.UserId == resolvedUserId)
+                    .OrderByDescending(ci => ci.CreatedAt)
+                    .Select(p => new ProductDto
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        Currency = p.Currency,
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
+                        Owner = new UserBriefInfoDto
+                        {
+                            Id = p.User.Id,
+                            FirstName = p.User.FirstName,
+                            LastName = p.User.LastName,
+                            Email = p.User.Email!,
+                            PhoneNumber = p.User.PhoneNumber
+                        },
+                        Groups = p.Groups.Select(g => new GroupDto
+                        {
+                            Category = g.Category.Name,
+                            Subcategory = g.Subcategory != null ? g.Subcategory.Name : null
+                        }).ToList(),
+                        ProductImages = p.ProductImages
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList(),
+                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                    })
+                    .ToListAsync();
+
+                return Result<ICollection<ProductDto>>.Success(productList);
             }
             catch
             {
@@ -244,6 +342,7 @@ namespace marketplace_practice.Services
             string? subcategory,
             ICollection<string>? imagesUrl)
         {
+            // Валидация ID товара
             if (!long.TryParse(productId, out var id))
             {
                 return Result<ProductDto>.Failure("Неверный формат ID товара");
@@ -260,134 +359,87 @@ namespace marketplace_practice.Services
 
             try
             {
-                // Получение продукта со всеми связанными данными
-                var product = await _appDbContext.Products
-                    .Include(p => p.User)
-                    .Include(p => p.Groups)
-                        .ThenInclude(g => g.Category)
-                    .Include(p => p.Groups)
-                        .ThenInclude(g => g.Subcategory)
-                    .Include(p => p.ProductImages)
-                    .FirstOrDefaultAsync(p => p.Id == id);
+                // Проверка прав доступа и получение базовой информации о продукте
+                var productInfo = await _appDbContext.Products
+                    .Where(p => p.Id == id)
+                    .Select(p => new
+                    {
+                        Product = p,
+                        HasAccess = p.UserId == currentUserId || userPrincipal.IsInRole("Admin")
+                    })
+                    .FirstOrDefaultAsync();
 
-                if (product == null)
+                if (productInfo == null)
                 {
                     return Result<ProductDto>.Failure("Товар не найден");
                 }
 
+                if (!productInfo.HasAccess)
+                {
+                    return Result<ProductDto>.Failure("Отказано в доступе");
+                }
+
+                var product = productInfo.Product;
+
                 // Обновление основных полей
                 if (!string.IsNullOrEmpty(name)) product.Name = name;
-                if (!string.IsNullOrEmpty(description)) product.Description = description;
+                if (description != null) product.Description = description;
                 if (price.HasValue) product.Price = price.Value;
                 if (currency.HasValue) product.Currency = currency.Value;
                 product.UpdatedAt = DateTime.UtcNow;
 
-                // Обновление категории/подкатегории
+                // Обновление категории/подкатегории (только если указаны)
                 if (category != null || subcategory != null)
                 {
-                    var currentGroup = product.Groups.FirstOrDefault();
-                    var newCategory = category ?? currentGroup?.Category.Name;
-                    var newSubcategory = subcategory ?? currentGroup?.Subcategory?.Name;
-
-                    // Удаление старых связей с группами
-                    product.Groups.Clear();
-
-                    if (!string.IsNullOrEmpty(newCategory))
-                    {
-                        var group = await _appDbContext.Groups
-                            .Include(g => g.Category)
-                            .Include(g => g.Subcategory)
-                            .FirstOrDefaultAsync(g => g.Category.Name == newCategory &&
-                                (string.IsNullOrEmpty(newSubcategory)
-                                    ? g.Subcategory == null
-                                    : g.Subcategory.Name == newSubcategory));
-
-                        if (group == null)
-                        {
-                            group = new Group
-                            {
-                                Category = await _appDbContext.Categories
-                                    .FirstOrDefaultAsync(c => c.Name == newCategory)
-                                    ?? new Category
-                                    {
-                                        Name = newCategory,
-                                        CreatedAt = DateTime.UtcNow,
-                                        UpdatedAt = DateTime.UtcNow,
-                                        IsActive = true
-                                    },
-                                Subcategory = string.IsNullOrEmpty(newSubcategory)
-                                    ? null
-                                    : await _appDbContext.Subcategories
-                                        .FirstOrDefaultAsync(s => s.Name == newSubcategory)
-                                        ?? new Subcategory
-                                        {
-                                            Name = newCategory,
-                                            CreatedAt = DateTime.UtcNow,
-                                            UpdatedAt = DateTime.UtcNow,
-                                            IsActive = true
-                                        }
-                            };
-                            await _appDbContext.Groups.AddAsync(group);
-                        }
-
-                        product.Groups.Add(group);
-                    }
+                    await UpdateProductGroupsAsync(product, category, subcategory);
                 }
 
-                // Обновление изображения
+                // Обновление изображений (только если указаны)
                 if (imagesUrl != null)
                 {
-                    // Удаление старых изображений
-                    _appDbContext.ProductImages.RemoveRange(product.ProductImages);
-
-                    // Добавление новых
-                    var productImages = imagesUrl.Select((url, index) => new ProductImage
-                    {
-                        ProductId = product.Id,
-                        Url = url,
-                        IsMain = index == 0,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    }).ToList();
-
-                    await _appDbContext.ProductImages.AddRangeAsync(productImages);
-                    product.ProductImages = productImages;
-                }
-
-                // Проверка прав доступа
-                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
-                {
-                    return Result<ProductDto>.Failure("Нет доступа к данному товару");
+                    await UpdateProductImagesAsync(product.Id, imagesUrl);
                 }
 
                 await _appDbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Создание DTO
-                var productDto = new ProductDto
-                {
-                    Id = product.Id,
-                    Name = product.Name,
-                    Description = product.Description,
-                    Price = product.Price,
-                    Currency = product.Currency,
-                    IsActive = product.IsActive,
-                    CreatedAt = product.CreatedAt,
-                    UpdatedAt = product.UpdatedAt,
-                    OwnerName = product.User?.FirstName != null
-                        ? $"{product.User.FirstName} {product.User.LastName}"
-                        : product.User?.UserName,
-                    Groups = product.Groups.Select(g => new GroupDto
+                // Получение обновленного продукта с проекцией в DTO
+                var productDto = await _appDbContext.Products
+                    .Where(p => p.Id == id)
+                    .Select(p => new ProductDto
                     {
-                        Category = g.Category.Name,
-                        Subcategory = g.Subcategory?.Name
-                    }).ToList(),
-                    ProductImages = product.ProductImages.Select(pi => new ProductImageDto
-                    {
-                        Url = pi.Url,
-                        IsMain = pi.IsMain
-                    }).OrderByDescending(pi => pi.IsMain).ToList()
-                };
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        Currency = p.Currency,
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
+                        Owner = new UserBriefInfoDto
+                        {
+                            Id = p.User.Id,
+                            FirstName = p.User.FirstName,
+                            LastName = p.User.LastName,
+                            Email = p.User.Email!,
+                            PhoneNumber = p.User.PhoneNumber
+                        },
+                        Groups = p.Groups.Select(g => new GroupDto
+                        {
+                            Category = g.Category.Name,
+                            Subcategory = g.Subcategory != null ? g.Subcategory.Name : null
+                        }).ToList(),
+                        ProductImages = p.ProductImages
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList(),
+                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                    })
+                    .FirstAsync();
 
                 return Result<ProductDto>.Success(productDto);
             }
@@ -396,6 +448,70 @@ namespace marketplace_practice.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private async Task UpdateProductGroupsAsync(Product product, string? category, string? subcategory)
+        {
+            // Удаление старых связей
+            product.Groups.Clear();
+
+            if (string.IsNullOrEmpty(category))
+                return;
+
+            // Поиск или создание группы
+            var group = await _appDbContext.Groups
+                .Include(g => g.Category)
+                .Include(g => g.Subcategory)
+                .FirstOrDefaultAsync(g => g.Category.Name == category &&
+                    (string.IsNullOrEmpty(subcategory)
+                        ? g.Subcategory == null
+                        : g.Subcategory != null && g.Subcategory.Name == subcategory));
+
+            if (group == null)
+            {
+                var categoryEntity = await _appDbContext.Categories
+                    .FirstOrDefaultAsync(c => c.Name == category)
+                    ?? new Category { Name = category };
+
+                Subcategory? subcategoryEntity = null;
+                if (!string.IsNullOrEmpty(subcategory))
+                {
+                    subcategoryEntity = await _appDbContext.Subcategories
+                        .FirstOrDefaultAsync(s => s.Name == subcategory)
+                        ?? new Subcategory { Name = subcategory };
+                }
+
+                group = new Group
+                {
+                    Category = categoryEntity,
+                    Subcategory = subcategoryEntity
+                };
+                _appDbContext.Groups.Add(group);
+            }
+
+            product.Groups.Add(group);
+        }
+
+        private async Task UpdateProductImagesAsync(long productId, ICollection<string> imagesUrl)
+        {
+            // Удаление старых изображений
+            await _appDbContext.ProductImages
+                .Where(pi => pi.ProductId == productId)
+                .ExecuteDeleteAsync();
+
+            // Добавление новых изображений
+            var productImages = imagesUrl
+                .Select((url, index) => new ProductImage
+                {
+                    ProductId = productId,
+                    Url = url,
+                    IsMain = index == 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                })
+                .ToList();
+
+            await _appDbContext.ProductImages.AddRangeAsync(productImages);
         }
 
         public async Task<Result<string>> DeleteProductAsync(ClaimsPrincipal userPrincipal, string productId)
@@ -431,7 +547,7 @@ namespace marketplace_practice.Services
                 // Проверка прав доступа
                 if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
                 {
-                    return Result<string>.Failure("Нет доступа к данному товару");
+                    return Result<string>.Failure("Отказано в доступе");
                 }
 
                 _appDbContext.Products.Remove(product);

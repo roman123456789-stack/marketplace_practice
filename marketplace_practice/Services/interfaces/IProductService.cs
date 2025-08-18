@@ -31,5 +31,9 @@ namespace marketplace_practice.Services.interfaces
             ICollection<string>? imagesUrl);
 
         public Task<Result<string>> DeleteProductAsync(ClaimsPrincipal userPrincipal, string productId);
+
+        public Task<Result<ICollection<ProductDto>>> GetProductListAsync(
+            ClaimsPrincipal userPrincipal,
+            string? targetUserId = null);
     }
 }

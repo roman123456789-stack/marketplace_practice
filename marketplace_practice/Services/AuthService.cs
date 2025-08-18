@@ -14,7 +14,6 @@ namespace marketplace_practice.Services
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
         private readonly ITokenService _tokenService;
-        private readonly ILoyaltyService _loyaltyService;
         private readonly IEmailService _emailService;
 
         public AuthService(
@@ -22,13 +21,11 @@ namespace marketplace_practice.Services
             RoleManager<Role> roleManager,
             SignInManager<User> signInManager,
             ITokenService tokenService,
-            ILoyaltyService loyaltyService,
             IEmailService emailService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
-            _loyaltyService = loyaltyService;
             _emailService = emailService;
         }
 
