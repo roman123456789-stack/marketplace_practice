@@ -43,7 +43,7 @@ namespace marketplace_practice.Services
 
             try
             {
-                // Создаем продукт
+                // Создание продукта
                 var product = new Product
                 {
                     Name = name,
@@ -129,14 +129,6 @@ namespace marketplace_practice.Services
                     })
                     .FirstOrDefaultAsync();
 
-                // Построение иерархий категорий
-                var resultCategoryHierarchies = new List<CategoryHierarchyDto>();
-                foreach (var category in product.Categories)
-                {
-                    var hierarchy = BuildCategoryHierarchy(category);
-                    resultCategoryHierarchies.Add(hierarchy);
-                }
-
                 await transaction.CommitAsync();
 
                 return Result<ProductDto>.Success(new ProductDto
@@ -153,7 +145,6 @@ namespace marketplace_practice.Services
                     IsActive = product.IsActive,
                     CreatedAt = product.CreatedAt,
                     UpdatedAt = product.UpdatedAt,
-                    CategoryHierarchies = resultCategoryHierarchies,
                     ProductImages = product.ProductImages?.Select(pi => new ProductImageDto
                     {
                         Url = pi.Url,
@@ -205,20 +196,6 @@ namespace marketplace_practice.Services
                     return Result<ProductDto>.Failure("Товар не найден");
                 }
 
-                // Проверка прав доступа
-                if (product.User.Id != currentUserId && !userPrincipal.IsInRole("Admin"))
-                {
-                    return Result<ProductDto>.Failure("Отказано в доступе");
-                }
-
-                // Построение иерархий категорий
-                var categoryHierarchies = new List<CategoryHierarchyDto>();
-                foreach (var category in product.Categories)
-                {
-                    var hierarchy = BuildCategoryHierarchy(category);
-                    categoryHierarchies.Add(hierarchy);
-                }
-
                 // Формирование DTO
                 var productDto = new ProductDto
                 {
@@ -241,7 +218,6 @@ namespace marketplace_practice.Services
                         Email = product.User.Email!,
                         PhoneNumber = product.User.PhoneNumber
                     },
-                    CategoryHierarchies = categoryHierarchies,
                     ProductImages = product.ProductImages
                         .OrderByDescending(pi => pi.IsMain)
                         .Select(pi => new ProductImageDto
@@ -278,7 +254,7 @@ namespace marketplace_practice.Services
             if (!string.IsNullOrEmpty(targetUserId))
             {
                 // Проверка прав администратора
-                if (userId != targetUserId && !userPrincipal.IsInRole("Admin"))
+                if (userId != targetUserId && !userPrincipal.IsInRole("MainAdmin"))
                 {
                     return Result<ICollection<ProductDto>>.Failure("Отказано в доступе");
                 }
@@ -316,11 +292,6 @@ namespace marketplace_practice.Services
                 var productDtos = new List<ProductDto>();
                 foreach (var product in products)
                 {
-                    // Построение иерархий категорий для продукта
-                    var categoryHierarchies = product.Categories
-                        .Select(c => BuildCategoryHierarchy(c))
-                        .ToList();
-
                     productDtos.Add(new ProductDto
                     {
                         Id = product.Id,
@@ -342,7 +313,6 @@ namespace marketplace_practice.Services
                             Email = product.User.Email!,
                             PhoneNumber = product.User.PhoneNumber
                         },
-                        CategoryHierarchies = categoryHierarchies,
                         ProductImages = product.ProductImages
                             .OrderByDescending(pi => pi.IsMain)
                             .Select(pi => new ProductImageDto
@@ -408,7 +378,7 @@ namespace marketplace_practice.Services
                     return Result<ProductDto>.Failure("Товар не найден");
                 }
 
-                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (product.UserId != currentUserId)
                 {
                     return Result<ProductDto>.Failure("Отказано в доступе");
                 }
@@ -437,11 +407,6 @@ namespace marketplace_practice.Services
 
                 await _appDbContext.SaveChangesAsync();
 
-                // Построение иерархий категорий для DTO
-                var resultCategoryHierarchies = product.Categories
-                    .Select(c => BuildCategoryHierarchy(c))
-                    .ToList();
-
                 await transaction.CommitAsync();
 
                 return Result<ProductDto>.Success(new ProductDto
@@ -465,7 +430,6 @@ namespace marketplace_practice.Services
                         Email = product.User.Email!,
                         PhoneNumber = product.User.PhoneNumber
                     },
-                    CategoryHierarchies = resultCategoryHierarchies,
                     ProductImages = product.ProductImages
                         .OrderByDescending(pi => pi.IsMain)
                         .Select(pi => new ProductImageDto
@@ -588,7 +552,7 @@ namespace marketplace_practice.Services
                 }
 
                 // Проверка прав доступа
-                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (product.UserId != currentUserId)
                 {
                     return Result<string>.Failure("Отказано в доступе");
                 }
@@ -597,7 +561,7 @@ namespace marketplace_practice.Services
                 await _appDbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Result<string>.Success($"Продукт с ID {productId} успешно удален");
+                return Result<string>.Success(string.Empty);
             }
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23503")
             {
@@ -609,44 +573,6 @@ namespace marketplace_practice.Services
                 await transaction.RollbackAsync();
                 throw;
             }
-        }
-
-
-
-        // Вспомогательный метод для построения иерархии категорий
-        private CategoryHierarchyDto BuildCategoryHierarchy(Category category)
-        {
-            // Собираем цепочку категорий от текущей до корня
-            var categories = new List<Category>();
-            var current = category;
-            while (current != null)
-            {
-                categories.Add(current);
-                current = current.ParentCategory;
-            }
-
-            // Разворачиваем цепочку (от корня к текущей)
-            categories.Reverse();
-
-            // Строим иерархию DTO
-            CategoryHierarchyDto root = null;
-            CategoryHierarchyDto currentDto = null;
-
-            foreach (var cat in categories)
-            {
-                if (root == null)
-                {
-                    root = new CategoryHierarchyDto { Name = cat.Name };
-                    currentDto = root;
-                }
-                else
-                {
-                    currentDto.Child = new CategoryHierarchyDto { Name = cat.Name };
-                    currentDto = currentDto.Child;
-                }
-            }
-
-            return root;
         }
     }
 }

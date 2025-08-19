@@ -18,6 +18,10 @@ namespace marketplace_practice.Services.interfaces
 
         public Task<Result<OrderDto>> GetOrderByIdAsync(ClaimsPrincipal userPrincipal, string orderId);
 
+        public Task<Result<ICollection<OrderDto>>> GetOrderListAsync(
+            ClaimsPrincipal userPrincipal,
+            string? targetUserId = null);
+
         public Task<Result<OrderDto>> UpdateOrderAsync(
             ClaimsPrincipal userPrincipal,
             string orderId,

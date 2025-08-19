@@ -1,93 +1,86 @@
-﻿using marketplace_practice.Middlewares;
-using marketplace_practice.Services.dto.Carts;
-using marketplace_practice.Services.interfaces;
+﻿using marketplace_practice.Services;
+using marketplace_practice.Services.dto.Products;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace marketplace_practice.Controllers
 {
     [ApiController]
-    [Route("cart")]
+    [Route("favoriteProducts")]
     [Produces("application/json")]
-    [ApiExplorerSettings(GroupName = "Cart")]
-    public class CartController : ControllerBase
+    [ApiExplorerSettings(GroupName = "FavoriteProducts")]
+    public class FavoriteProductController : ControllerBase
     {
-        private readonly ICartService _cartService;
-        private readonly ILogger<CartController> _logger;
+        private readonly FavoriteProductService _favoriteProductService; // добавить интерфейс
+        private readonly ILogger<FavoriteProductController> _logger;
 
-        public CartController(ICartService cartService, ILogger<CartController> logger)
+        public FavoriteProductController(
+            FavoriteProductService favoriteProductService,
+            ILogger<FavoriteProductController> logger)
         {
-            _cartService = cartService;
+            _favoriteProductService = favoriteProductService;
             _logger = logger;
         }
 
         [HttpPost]
         [Authorize]
-        [ValidateModel]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> AddCartItem([FromQuery] string productId)
+        public async Task<IActionResult> Create([FromQuery] string productId)
         {
             try
             {
-                var result = await _cartService.AddCartItemAsync(User, productId);
+                var result = await _favoriteProductService.AddToFavoritesAsync(User, productId);
 
                 if (result.IsSuccess)
                 {
-                    _logger.LogInformation("Товар успешно добавлен в корзину");
+                    _logger.LogInformation("Товар успешно добавлен в избранное");
                     return StatusCode(201);
                 }
 
-                _logger.LogWarning("Ошибка при добавлении товара в корзину: {Errors}",
+                _logger.LogWarning("Ошибка при добавлении товара в избранное: {Errors}",
                     string.Join(", ", result.Errors));
 
                 return HandleFailure(result.Errors);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при добавлении товара в корзину");
+                _logger.LogError(ex, "Ошибка при добавлении товара в каталог");
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpGet]
         [Authorize]
-        [ProducesResponseType(typeof(ICollection<CartItemDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetCart([FromQuery] string? userId = null)
+        public async Task<IActionResult> GetProductList([FromQuery] string? userId = null)
         {
             try
             {
-                var result = await _cartService.GetCartAsync(User, userId);
+                var result = await _favoriteProductService.GetFavoritesAsync(User, userId);
 
                 if (result.IsSuccess)
                 {
-                    return Ok(new
-                    {
-                        Cart = result.Value?.Select(ci => new
-                        {
-                            CartItemId = ci.CartItemId,
-                            Product = ci.productBriefInfo
-                        })
-                    });
+                    return Ok(result.Value);
                 }
 
                 return HandleFailure(result.Errors);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при получении корзины");
+                _logger.LogError(ex, "Ошибка при получении избранных товаров пользователя c ID = '{UserId}'", userId);
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
-        [HttpDelete("{cartItemId}")]
+        [HttpDelete("{productId}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -96,26 +89,26 @@ namespace marketplace_practice.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Delete([FromRoute] string cartItemId)
+        public async Task<IActionResult> Delete([FromRoute] string productId)
         {
             try
             {
-                var result = await _cartService.DeleteCartItemAsync(User, cartItemId);
+                var result = await _favoriteProductService.RemoveFromFavoritesAsync(User, productId);
 
                 if (result.IsSuccess)
                 {
-                    _logger.LogInformation("Товар c ID = '{CartId}' успешно удалён из корзины", cartItemId);
+                    _logger.LogInformation("Товар c ID = '{ProductId}' успешно удалён из избранных", productId);
                     return NoContent();
                 }
 
-                _logger.LogWarning("Ошибка при удалении товара с ID = '{CartId}' из корзины: {Errors}",
-                    cartItemId, string.Join(", ", result.Errors));
+                _logger.LogWarning("Ошибка при удалении из избранных товара с ID = '{ProductId}': {Errors}",
+                    productId, string.Join(", ", result.Errors));
 
                 return HandleFailure(result.Errors);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при удалении товара c ID = '{CartId}' из корзины", cartItemId);
+                _logger.LogError(ex, "Ошибка при удалении из избранных товара c ID = '{ProductId}'", productId);
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
@@ -125,7 +118,7 @@ namespace marketplace_practice.Controllers
             var firstError = errors.FirstOrDefault();
             return firstError switch
             {
-                "Товар не найден в корзине" => NotFound(new { Error = firstError }),
+                "Товар не найден" => NotFound(new { Error = firstError }),
                 "Не удалось идентифицировать пользователя"
                     => Unauthorized(new { Error = firstError }),
                 "Отказано в доступе" => Forbid(),

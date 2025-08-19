@@ -1,8 +1,6 @@
 ﻿using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto.Users;
 
-using marketplace_practice.Controllers.dto.Products;
-
 namespace marketplace_practice.Services.dto.Products
 {
     public class ProductDto
@@ -19,7 +17,6 @@ namespace marketplace_practice.Services.dto.Products
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-        public required ICollection<CategoryHierarchyDto> CategoryHierarchies { get; set; }
         public ICollection<ProductImageDto>? ProductImages { get; set; }
         public bool IsFavirite { get; set; }
         public bool IsAdded { get; set; }

@@ -1,6 +1,8 @@
 ﻿using marketplace_practice.Controllers.dto.Orders;
 using marketplace_practice.Middlewares;
+using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Orders;
+using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -84,6 +86,34 @@ namespace marketplace_practice.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении заказа c ID = '{OrderId}'", orderId);
+                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        [HttpGet]
+        [Authorize]
+        [ProducesResponseType(typeof(ICollection<OrderDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetOrderList([FromQuery] string? userId = null)
+        {
+            try
+            {
+                var result = await _orderService.GetOrderListAsync(User, userId);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(result.Value);
+                }
+
+                return HandleFailure(result.Errors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении заказов пользователя c ID = '{UserId}'", userId);
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
@@ -174,7 +204,7 @@ namespace marketplace_practice.Controllers
                     => Unauthorized(new { Error = firstError }),
                 "Нельзя удалить заказ, так как он используется в других записях"
                     => Conflict(new { Error = firstError }),
-                "Нет доступа к данному заказу" => Forbid(),
+                "Отказано в доступе" => Forbid(),
                 _ => BadRequest(new { Errors = errors })
             };
         }

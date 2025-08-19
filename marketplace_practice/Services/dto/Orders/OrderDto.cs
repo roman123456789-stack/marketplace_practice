@@ -1,5 +1,4 @@
-﻿using marketplace_practice.Models.Enums;
-using marketplace_practice.Services.dto.Users;
+﻿using marketplace_practice.Services.dto.Users;
 
 namespace marketplace_practice.Services.dto.Orders
 {

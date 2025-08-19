@@ -261,7 +261,7 @@ namespace marketplace_practice.Services
             var currentUserId = _userManager.GetUserId(userPrincipal);
             var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
 
-            if (currentUserId != user.Id.ToString() && !isAdmin)
+            if (currentUserId != user.Id.ToString())
             {
                 return false;
             }

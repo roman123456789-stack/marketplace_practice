@@ -19,8 +19,14 @@ namespace marketplace_practice.Services
 
         public async Task<Result<string>> AddCartItemAsync(
             ClaimsPrincipal userPrincipal,
-            long productId)
+            string productId)
         {
+            // Валидация ID товара
+            if (!long.TryParse(productId, out var id))
+            {
+                return Result<string>.Failure("Неверный формат ID товара");
+            }
+
             // Получение пользователя из ClaimsPrincipal
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var buyerId))
@@ -29,7 +35,7 @@ namespace marketplace_practice.Services
             }
 
             // Проверка существования товара
-            if (!await _appDbContext.Products.AnyAsync(p => p.Id == productId))
+            if (!await _appDbContext.Products.AnyAsync(p => p.Id == id))
             {
                 return Result<string>.Failure("Указанный товар не существует");
             }
@@ -57,7 +63,7 @@ namespace marketplace_practice.Services
                 }
 
                 // Поиск существующего товара в корзине
-                var existingItem = cart.CartItems.FirstOrDefault(ci => ci.ProductId == productId);
+                var existingItem = cart.CartItems.FirstOrDefault(ci => ci.ProductId == id);
 
                 if (existingItem != null)
                 {
@@ -68,7 +74,7 @@ namespace marketplace_practice.Services
                     // Добавление нового товара
                     cart.CartItems.Add(new CartItem
                     {
-                        ProductId = productId,
+                        ProductId = id,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     });
@@ -103,7 +109,7 @@ namespace marketplace_practice.Services
             if (!string.IsNullOrEmpty(targetUserId))
             {
                 // Проверка прав администратора
-                if (userId != targetUserId && !userPrincipal.IsInRole("Admin"))
+                if (userId != targetUserId && !userPrincipal.IsInRole("MainAdmin"))
                 {
                     return Result<ICollection<CartItemDto>>.Failure("Отказано в доступе");
                 }
@@ -179,7 +185,7 @@ namespace marketplace_practice.Services
                 }
 
                 // Проверка прав доступа
-                if (cartItem.Cart.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (cartItem.Cart.UserId != currentUserId)
                 {
                     return Result<string>.Failure("Отказано в доступе");
                 }

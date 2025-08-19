@@ -23,7 +23,7 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ValidateModel]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -114,13 +114,13 @@ namespace marketplace_practice.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при получении товаров пользователя c ID = '{ProductId}'", userId);
+                _logger.LogError(ex, "Ошибка при получении товаров пользователя c ID = '{UserId}'", userId);
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
         [HttpPatch("{productId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ValidateModel]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -166,7 +166,7 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpDelete("{productId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

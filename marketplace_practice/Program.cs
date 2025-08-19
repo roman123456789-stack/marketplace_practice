@@ -32,6 +32,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<FavoriteProductService>(); // добавить интерфейс
 builder.Services.AddEndpointsApiExplorer();
 
 // ДЛЯ ЛОКАЛЬНОГО ЗАПУСКА
@@ -71,7 +72,8 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("Users", new OpenApiInfo { Title = "Users API", Version = "v1" });
     c.SwaggerDoc("Products", new OpenApiInfo { Title = "Products API", Version = "v1" });
     c.SwaggerDoc("Orders", new OpenApiInfo { Title = "Orders API", Version = "v1" });
-    c.SwaggerDoc("Carts", new OpenApiInfo { Title = "Carts API", Version = "v1" });
+    c.SwaggerDoc("Cart", new OpenApiInfo { Title = "Cart API", Version = "v1" });
+    c.SwaggerDoc("FavoriteProducts", new OpenApiInfo { Title = "FavoriteProducts API", Version = "v1" });
     c.SwaggerDoc("Default", new OpenApiInfo { Title = "Default API", Version = "v1" });
 
     // Добавляем поддержку JWT в Swagger
@@ -147,7 +149,8 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/Users/swagger.json", "Users");
         c.SwaggerEndpoint("/swagger/Products/swagger.json", "Products");
         c.SwaggerEndpoint("/swagger/Orders/swagger.json", "Orders");
-        c.SwaggerEndpoint("/swagger/Carts/swagger.json", "Carts");
+        c.SwaggerEndpoint("/swagger/Cart/swagger.json", "Cart");
+        c.SwaggerEndpoint("/swagger/FavoriteProducts/swagger.json", "FavoriteProducts");
     });
 }
 

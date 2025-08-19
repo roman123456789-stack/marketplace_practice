@@ -266,9 +266,9 @@ namespace marketplace_practice.Services
                 }
 
                 // Проверка прав доступа
-                if (orderDto.User.Id != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (orderDto.User.Id != currentUserId)
                 {
-                    return Result<OrderDto>.Failure("Нет доступа к данному заказу");
+                    return Result<OrderDto>.Failure("Отказано в доступе");
                 }
 
                 // Вычисление общей суммы заказа
@@ -276,6 +276,121 @@ namespace marketplace_practice.Services
                     .Sum(oi => oi.Product.Price * oi.Quantity);
 
                 return Result<OrderDto>.Success(orderDto);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<Result<ICollection<OrderDto>>> GetOrderListAsync(
+            ClaimsPrincipal userPrincipal,
+            string? targetUserId = null)
+        {
+            // Получение текущего пользователя
+            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            {
+                return Result<ICollection<OrderDto>>.Failure("Не удалось идентифицировать пользователя");
+            }
+
+            // Определение ID целевого пользователя
+            long? resolvedUserId = null;
+
+            if (!string.IsNullOrEmpty(targetUserId))
+            {
+                // Проверка прав администратора
+                if (userId != targetUserId && !userPrincipal.IsInRole("MainAdmin"))
+                {
+                    return Result<ICollection<OrderDto>>.Failure("Отказано в доступе");
+                }
+
+                if (!long.TryParse(targetUserId, out var parsedUserId))
+                {
+                    return Result<ICollection<OrderDto>>.Failure("Некорректный формат ID пользователя");
+                }
+                resolvedUserId = parsedUserId;
+            }
+            else
+            {
+                resolvedUserId = currentUserId;
+            }
+
+            try
+            {
+                // Оптимизированный запрос с проекцией в DTO через CartItem
+                var orderDtos = await _appDbContext.Orders
+                    .AsNoTracking()
+                    .Where(o => o.UserId == resolvedUserId)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Select(o => new OrderDto
+                    {
+                        Id = o.Id,
+                        User = new UserBriefInfoDto
+                        {
+                            Id = o.User.Id,
+                            FirstName = o.User.FirstName,
+                            LastName = o.User.LastName,
+                            Email = o.User.Email!,
+                            PhoneNumber = o.User.PhoneNumber
+                        },
+                        Status = o.Status.GetDisplayName(),
+                        CreatedAt = o.CreatedAt,
+                        UpdatedAt = o.UpdatedAt,
+                        OrderItems = o.OrderItems.Select(oi => new OrderItemDto
+                        {
+                            Quantity = oi.Quantity,
+                            Currency = oi.Currency.GetDisplayName(),
+                            CreatedAt = oi.CreatedAt,
+                            UpdatedAt = oi.UpdatedAt,
+                            Product = new ProductBriefInfoDto
+                                {
+                                    Id = oi.CartItem.Product.Id,
+                                    UserId = oi.CartItem.Product.UserId,
+                                    Name = oi.CartItem.Product.Name,
+                                    Price = oi.CartItem.Product.Price,
+                                    Currency = oi.CartItem.Product.Currency
+                                }
+                        }).ToList(),
+                        OrderDetail = new OrderDetailDto
+                            {
+                                FullName = o.OrderDetail.FullName,
+                                PhoneNumber = o.OrderDetail.PhoneNumber,
+                                Country = o.OrderDetail.Country,
+                                PostalCode = o.OrderDetail.PostalCode
+                            },
+                        LoyaltyTransaction = o.LoyaltyTransaction != null
+                            ? new LoyaltyTransactionDto
+                            {
+                                UserId = o.LoyaltyTransaction.UserId,
+                                Type = o.LoyaltyTransaction.Type.ToString(),
+                                Points = o.LoyaltyTransaction.Points,
+                                Description = o.LoyaltyTransaction.Description,
+                                CreatedAt = o.LoyaltyTransaction.CreatedAt
+                            }
+                            : null,
+                        Payment = o.Payment != null
+                            ? new PaymentDto
+                            {
+                                Id = o.Payment.Id,
+                                ProviderName = o.Payment.ProviderName,
+                                ProviderPaymentId = o.Payment.ProviderPaymentId,
+                                Amount = o.Payment.Amount,
+                                Currency = o.Payment.Currency,
+                                CreatedAt = o.Payment.CreatedAt
+                            }
+                            : null
+                    })
+                    .ToListAsync();
+
+                // Вычисление общей суммы заказов
+                foreach (var orderDto in orderDtos)
+                {
+                    orderDto.TotalAmount = orderDto.OrderItems
+                        .Sum(oi => oi.Product.Price * oi.Quantity);
+                }
+
+                return Result<ICollection<OrderDto>>.Success(orderDtos);
             }
             catch
             {
@@ -317,8 +432,8 @@ namespace marketplace_practice.Services
                 if (order == null)
                     return Result<OrderDto>.Failure("Заказ не найден");
 
-                if (order.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
-                    return Result<OrderDto>.Failure("Нет доступа к данному заказу");
+                if (order.UserId != currentUserId)
+                    return Result<OrderDto>.Failure("Отказано в доступе");
 
                 // Обновление статуса
                 if (status.HasValue)
@@ -348,7 +463,7 @@ namespace marketplace_practice.Services
                 // Получение обновленного заказа через GetOrderByIdAsync
                 return await GetOrderByIdAsync(userPrincipal, orderId);
             }
-            catch (Exception ex)
+            catch
             {
                 await transaction.RollbackAsync();
                 throw;
@@ -451,9 +566,9 @@ namespace marketplace_practice.Services
                 }
 
                 // Проверка прав доступа
-                if (order.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (order.UserId != currentUserId)
                 {
-                    return Result<string>.Failure("Нет доступа к данному заказу");
+                    return Result<string>.Failure("Отказано в доступе");
                 }
 
                 // Проверка статуса заказа
