@@ -13,7 +13,6 @@ namespace marketplace_practice.Configurations
             builder.Property(ci => ci.Id).HasColumnName("id");
             builder.Property(ci => ci.CartId).HasColumnName("cart_id").IsRequired();
             builder.Property(ci => ci.ProductId).HasColumnName("product_id").IsRequired();
-            builder.Property(ci => ci.Quantity).HasColumnName("quantity");
             builder.Property(ci => ci.CreatedAt).HasColumnName("created_at");
             builder.Property(ci => ci.UpdatedAt).HasColumnName("updated_at");
 

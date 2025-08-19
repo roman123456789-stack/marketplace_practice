@@ -6,7 +6,6 @@ namespace marketplace_practice.Services.dto.Carts
     {
         public required string CartItemId { get; set; }
         public required ProductBriefInfoDto productBriefInfo {  get; set; }
-        public required int Quantity { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

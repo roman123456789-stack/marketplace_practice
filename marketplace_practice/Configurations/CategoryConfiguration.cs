@@ -9,12 +9,18 @@ namespace marketplace_practice.Configurations
         public void Configure(EntityTypeBuilder<Category> builder)
         {
             builder.ToTable("categories");
-            builder.HasKey(s => s.Id);
-            builder.Property(s => s.Id).HasColumnName("id");
-            builder.Property(s => s.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
-            builder.Property(s => s.CreatedAt).HasColumnName("created_at").IsRequired();
-            builder.Property(s => s.UpdatedAt).HasColumnName("updated_at");
-            builder.Property(s => s.IsActive).HasColumnName("is_active").IsRequired();
+            builder.HasKey(c => c.Id);
+            builder.Property(c => c.Id).HasColumnName("id");
+            builder.Property(c => c.ParentCategoryId).HasColumnName("parent_category_id").IsRequired(false);
+            builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
+            builder.Property(c => c.UpdatedAt).HasColumnName("updated_at");
+            builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired();
+
+            builder.HasMany(c => c.Subcategories)
+                .WithOne(s => s.ParentCategory)
+                .HasForeignKey(c => c.ParentCategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

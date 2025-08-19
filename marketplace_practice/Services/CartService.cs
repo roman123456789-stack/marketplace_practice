@@ -19,8 +19,7 @@ namespace marketplace_practice.Services
 
         public async Task<Result<string>> AddCartItemAsync(
             ClaimsPrincipal userPrincipal,
-            long productId,
-            int quantity = 1)
+            long productId)
         {
             // Получение пользователя из ClaimsPrincipal
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -62,10 +61,6 @@ namespace marketplace_practice.Services
 
                 if (existingItem != null)
                 {
-                    //// Обновление количества существующего товара
-                    //existingItem.Quantity += quantity;
-                    //existingItem.UpdatedAt = DateTime.UtcNow;
-
                     return Result<string>.Failure("Данный товар уже в корзине");
                 }
                 else
@@ -74,7 +69,6 @@ namespace marketplace_practice.Services
                     cart.CartItems.Add(new CartItem
                     {
                         ProductId = productId,
-                        Quantity = quantity,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     });
@@ -143,7 +137,6 @@ namespace marketplace_practice.Services
                             Price = ci.Product.Price,
                             Currency = ci.Product.Currency
                         },
-                        Quantity = ci.Quantity,
                         CreatedAt = ci.CreatedAt,
                         UpdatedAt = ci.UpdatedAt
                     })

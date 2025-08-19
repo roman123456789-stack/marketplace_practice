@@ -12,7 +12,7 @@ namespace marketplace_practice.Configurations
             builder.HasKey(oi => oi.Id);
             builder.Property(oi => oi.Id).HasColumnName("id");
             builder.Property(oi => oi.OrderId).HasColumnName("order_id").IsRequired();
-            builder.Property(oi => oi.ProductId).HasColumnName("product_id").IsRequired();
+            builder.Property(oi => oi.CartItemId).HasColumnName("cart_item_id").IsRequired();
             builder.Property(oi => oi.Quantity).HasColumnName("quantity").IsRequired();
             builder.Property(oi => oi.Currency).HasColumnName("currency").HasConversion<string>().HasMaxLength(100).IsRequired();
             builder.Property(oi => oi.CreatedAt).HasColumnName("created_at").IsRequired();
@@ -24,9 +24,9 @@ namespace marketplace_practice.Configurations
                   .OnDelete(DeleteBehavior.Cascade)
                   .IsRequired();
 
-            builder.HasOne(oi => oi.Product)
-                  .WithMany(p => p.OrderItems)
-                  .HasForeignKey(oi => oi.ProductId)
+            builder.HasOne(oi => oi.CartItem)
+                  .WithOne(ci => ci.OrderItem)
+                  .HasForeignKey<OrderItem>(oi => oi.CartItemId)
                   .OnDelete(DeleteBehavior.Restrict)
                   .IsRequired();
         }

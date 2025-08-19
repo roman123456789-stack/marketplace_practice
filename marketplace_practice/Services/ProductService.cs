@@ -1,7 +1,7 @@
 ﻿using marketplace_practice.Models;
 using marketplace_practice.Models.Enums;
-using marketplace_practice.Services.dto.Orders;
 using marketplace_practice.Services.dto.Products;
+using marketplace_practice.Controllers.dto.Products;
 using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
@@ -25,73 +25,33 @@ namespace marketplace_practice.Services
             string name,
             string? description,
             decimal price,
+            decimal? promotionalPrice,
+            short? size,
             Currency currency,
-            string category,
-            string? subcategory,
-            ICollection<string>? imagesUrl)
+            ICollection<CategoryHierarchyDto> categoryHierarchies,
+            ICollection<string>? imagesUrl,
+            int stockQuantity = 0)
         {
-            // Получение пользователя из ClaimsPrincipal
+            // Получение пользователя
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var ownerId))
             {
                 return Result<ProductDto>.Failure("Не удалось идентифицировать пользователя");
             }
 
-            // Начало транзакции
             using var transaction = await _appDbContext.Database.BeginTransactionAsync();
 
             try
             {
-                // Поиск или создание группы (категории)
-                var group = await _appDbContext.Groups
-                    .Include(g => g.Category)
-                    .Include(g => g.Subcategory)
-                    .FirstOrDefaultAsync(g => g.Category.Name == category &&
-                        (string.IsNullOrEmpty(subcategory)
-                        ? g.Subcategory == null
-                        : g.Subcategory != null && g.Subcategory.Name == subcategory));
-
-                if (group == null)
-                {
-                    var categoryEntity = await _appDbContext.Categories
-                        .FirstOrDefaultAsync(c => c.Name == category)
-                        ?? new Category
-                        {
-                            Name = category,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow,
-                            IsActive = true
-                        };
-
-                    Subcategory? subcategoryEntity = null;
-                    if (!string.IsNullOrEmpty(subcategory))
-                    {
-                        subcategoryEntity = await _appDbContext.Subcategories
-                            .FirstOrDefaultAsync(s => s.Name == subcategory)
-                            ?? new Subcategory
-                            {
-                                Name = subcategory,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow,
-                                IsActive = true
-                            };
-                    }
-
-                    group = new Group
-                    {
-                        Category = categoryEntity,
-                        Subcategory = subcategoryEntity
-                    };
-
-                    await _appDbContext.Groups.AddAsync(group);
-                    await _appDbContext.SaveChangesAsync();
-                }
-
+                // Создаем продукт
                 var product = new Product
                 {
                     Name = name,
                     Description = description,
                     Price = price,
+                    PromotionalPrice = promotionalPrice,
+                    Size = size,
+                    StockQuantity = stockQuantity,
                     Currency = currency,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
@@ -99,35 +59,83 @@ namespace marketplace_practice.Services
                     UserId = ownerId
                 };
 
-                // Добавление изображений
-                ICollection<ProductImage> productImages = new List<ProductImage>();
+                // Обработка изображений
                 if (imagesUrl != null && imagesUrl.Any())
                 {
-                    for (int i = 0; i < imagesUrl.Count; i++)
+                    product.ProductImages = imagesUrl.Select((url, index) => new ProductImage
                     {
-                        productImages.Add(new ProductImage
-                        {
-                            Product = product,
-                            Url = imagesUrl.ElementAt(i),
-                            IsMain = i == 0, // Первое изображение - основное
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        });
-                    }
-                    product.ProductImages = productImages;
+                        Url = url,
+                        IsMain = index == 0,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    }).ToList();
                 }
 
-                // Добавление продукта в группу
-                product.Groups.Add(group);
+                // Обработка категорий
+                var processedCategories = new List<Category>();
+                foreach (var hierarchy in categoryHierarchies)
+                {
+                    var currentLevel = hierarchy;
+                    Category? parentCategory = null;
+                    Category? lastCategory = null;
+
+                    while (currentLevel != null)
+                    {
+                        // Ищем или создаем категорию
+                        var category = await _appDbContext.Categories
+                            .FirstOrDefaultAsync(c => c.Name == currentLevel.Name &&
+                                                   c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null))
+                            ?? new Category
+                            {
+                                Name = currentLevel.Name,
+                                ParentCategoryId = parentCategory?.Id,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow,
+                                IsActive = true
+                            };
+
+                        if (category.Id == 0)
+                        {
+                            await _appDbContext.Categories.AddAsync(category);
+                            await _appDbContext.SaveChangesAsync(); // Сохраняем чтобы получить Id
+                        }
+
+                        lastCategory = category;
+                        parentCategory = category;
+                        currentLevel = currentLevel.Child;
+
+                        // Добавление только конечных категорий к продукту
+                        if (currentLevel == null)
+                        {
+                            product.Categories.Add(category);
+                            processedCategories.Add(category);
+                        }
+                    }
+                }
 
                 await _appDbContext.Products.AddAsync(product);
                 await _appDbContext.SaveChangesAsync();
 
-                // Получение владельца для DTO
+                // Получение информации о владельце
                 var owner = await _appDbContext.Users
                     .Where(u => u.Id == ownerId)
-                    .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.PhoneNumber })
+                    .Select(u => new UserBriefInfoDto
+                    {
+                        Id = u.Id,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email!,
+                        PhoneNumber = u.PhoneNumber
+                    })
                     .FirstOrDefaultAsync();
+
+                // Построение иерархий категорий
+                var resultCategoryHierarchies = new List<CategoryHierarchyDto>();
+                foreach (var category in product.Categories)
+                {
+                    var hierarchy = BuildCategoryHierarchy(category);
+                    resultCategoryHierarchies.Add(hierarchy);
+                }
 
                 await transaction.CommitAsync();
 
@@ -137,27 +145,16 @@ namespace marketplace_practice.Services
                     Name = product.Name,
                     Description = product.Description,
                     Price = product.Price,
-                    Owner = new UserBriefInfoDto
-                    {
-                        Id = owner!.Id,
-                        FirstName = owner.FirstName,
-                        LastName = owner.LastName,
-                        Email = owner.Email!,
-                        PhoneNumber = owner.PhoneNumber,
-                    },
+                    PromotionalPrice = product.PromotionalPrice,
+                    Size = product.Size,
+                    StockQuantity = product.StockQuantity,
+                    Owner = owner!,
                     Currency = currency,
                     IsActive = product.IsActive,
                     CreatedAt = product.CreatedAt,
                     UpdatedAt = product.UpdatedAt,
-                    Groups = new List<GroupDto>
-                    {
-                        new GroupDto
-                        {
-                            Category = category,
-                            Subcategory = subcategory
-                        }
-                    },
-                    ProductImages = productImages.Select(pi => new ProductImageDto
+                    CategoryHierarchies = resultCategoryHierarchies,
+                    ProductImages = product.ProductImages?.Select(pi => new ProductImageDto
                     {
                         Url = pi.Url,
                         IsMain = pi.IsMain
@@ -190,55 +187,71 @@ namespace marketplace_practice.Services
 
             try
             {
-                // Оптимизированный запрос с проекцией в DTO
-                var productDto = await _appDbContext.Products
-                    .AsNoTracking()
-                    .Where(p => p.Id == id)
-                    .Select(p => new ProductDto
-                    {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Description = p.Description,
-                        Price = p.Price,
-                        Currency = p.Currency,
-                        IsActive = p.IsActive,
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt,
-                        Owner = new UserBriefInfoDto
-                        {
-                            Id = p.User.Id,
-                            FirstName = p.User.FirstName,
-                            LastName = p.User.LastName,
-                            Email = p.User.Email!,
-                            PhoneNumber = p.User.PhoneNumber
-                        },
-                        Groups = p.Groups.Select(g => new GroupDto
-                        {
-                            Category = g.Category.Name,
-                            Subcategory = g.Subcategory != null ? g.Subcategory.Name : null
-                        }).ToList(),
-                        ProductImages = p.ProductImages
-                            .OrderByDescending(pi => pi.IsMain)
-                            .Select(pi => new ProductImageDto
-                            {
-                                Url = pi.Url,
-                                IsMain = pi.IsMain
-                            }).ToList(),
-                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
-                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
-                    })
-                    .FirstOrDefaultAsync();
+                // Загрузка продукта с связанными данными
+                var product = await _appDbContext.Products
+                    .Include(p => p.User)
+                    .Include(p => p.ProductImages)
+                    .Include(p => p.Categories)
+                        .ThenInclude(c => c.ParentCategory)
+                        .ThenInclude(c => c.ParentCategory)
+                    .Include(p => p.FavoriteProducts)
+                    .Include(p => p.CartItems)
+                        .ThenInclude(ci => ci.Cart)
+                    .AsSplitQuery()
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
-                if (productDto == null)
+                if (product == null)
                 {
                     return Result<ProductDto>.Failure("Товар не найден");
                 }
 
                 // Проверка прав доступа
-                if (productDto.Owner.Id != currentUserId && !userPrincipal.IsInRole("Admin"))
+                if (product.User.Id != currentUserId && !userPrincipal.IsInRole("Admin"))
                 {
                     return Result<ProductDto>.Failure("Отказано в доступе");
                 }
+
+                // Построение иерархий категорий
+                var categoryHierarchies = new List<CategoryHierarchyDto>();
+                foreach (var category in product.Categories)
+                {
+                    var hierarchy = BuildCategoryHierarchy(category);
+                    categoryHierarchies.Add(hierarchy);
+                }
+
+                // Формирование DTO
+                var productDto = new ProductDto
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    Description = product.Description,
+                    Price = product.Price,
+                    PromotionalPrice = product.PromotionalPrice,
+                    Size = product.Size,
+                    StockQuantity = product.StockQuantity,
+                    Currency = product.Currency,
+                    IsActive = product.IsActive,
+                    CreatedAt = product.CreatedAt,
+                    UpdatedAt = product.UpdatedAt,
+                    Owner = new UserBriefInfoDto
+                    {
+                        Id = product.User.Id,
+                        FirstName = product.User.FirstName,
+                        LastName = product.User.LastName,
+                        Email = product.User.Email!,
+                        PhoneNumber = product.User.PhoneNumber
+                    },
+                    CategoryHierarchies = categoryHierarchies,
+                    ProductImages = product.ProductImages
+                        .OrderByDescending(pi => pi.IsMain)
+                        .Select(pi => new ProductImageDto
+                        {
+                            Url = pi.Url,
+                            IsMain = pi.IsMain
+                        }).ToList(),
+                    IsFavirite = product.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                    IsAdded = product.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                };
 
                 return Result<ProductDto>.Success(productDto);
             }
@@ -252,7 +265,7 @@ namespace marketplace_practice.Services
             ClaimsPrincipal userPrincipal,
             string? targetUserId = null)
         {
-            // Получение пользователя из ClaimsPrincipal
+            // Получение текущего пользователя
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
             {
@@ -270,7 +283,6 @@ namespace marketplace_practice.Services
                     return Result<ICollection<ProductDto>>.Failure("Отказано в доступе");
                 }
 
-                // Преобразование строки в long
                 if (!long.TryParse(targetUserId, out var parsedUserId))
                 {
                     return Result<ICollection<ProductDto>>.Failure("Некорректный формат ID пользователя");
@@ -284,46 +296,66 @@ namespace marketplace_practice.Services
 
             try
             {
-                var productList = await _appDbContext.Products
+                // Оптимизированный запрос с загрузкой всех необходимых данных
+                var products = await _appDbContext.Products
                     .AsNoTracking()
                     .Where(p => p.UserId == resolvedUserId)
-                    .OrderByDescending(ci => ci.CreatedAt)
-                    .Select(p => new ProductDto
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Include(p => p.User)
+                    .Include(p => p.ProductImages)
+                    .Include(p => p.Categories)
+                        .ThenInclude(c => c.ParentCategory)
+                        .ThenInclude(c => c.ParentCategory)
+                    .Include(p => p.FavoriteProducts)
+                    .Include(p => p.CartItems)
+                        .ThenInclude(ci => ci.Cart)
+                    .AsSplitQuery()
+                    .ToListAsync();
+
+                // Формирование DTO
+                var productDtos = new List<ProductDto>();
+                foreach (var product in products)
+                {
+                    // Построение иерархий категорий для продукта
+                    var categoryHierarchies = product.Categories
+                        .Select(c => BuildCategoryHierarchy(c))
+                        .ToList();
+
+                    productDtos.Add(new ProductDto
                     {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Description = p.Description,
-                        Price = p.Price,
-                        Currency = p.Currency,
-                        IsActive = p.IsActive,
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt,
+                        Id = product.Id,
+                        Name = product.Name,
+                        Description = product.Description,
+                        Price = product.Price,
+                        PromotionalPrice = product.PromotionalPrice,
+                        Size = product.Size,
+                        StockQuantity = product.StockQuantity,
+                        Currency = product.Currency,
+                        IsActive = product.IsActive,
+                        CreatedAt = product.CreatedAt,
+                        UpdatedAt = product.UpdatedAt,
                         Owner = new UserBriefInfoDto
                         {
-                            Id = p.User.Id,
-                            FirstName = p.User.FirstName,
-                            LastName = p.User.LastName,
-                            Email = p.User.Email!,
-                            PhoneNumber = p.User.PhoneNumber
+                            Id = product.User.Id,
+                            FirstName = product.User.FirstName,
+                            LastName = product.User.LastName,
+                            Email = product.User.Email!,
+                            PhoneNumber = product.User.PhoneNumber
                         },
-                        Groups = p.Groups.Select(g => new GroupDto
-                        {
-                            Category = g.Category.Name,
-                            Subcategory = g.Subcategory != null ? g.Subcategory.Name : null
-                        }).ToList(),
-                        ProductImages = p.ProductImages
+                        CategoryHierarchies = categoryHierarchies,
+                        ProductImages = product.ProductImages
                             .OrderByDescending(pi => pi.IsMain)
                             .Select(pi => new ProductImageDto
                             {
                                 Url = pi.Url,
                                 IsMain = pi.IsMain
                             }).ToList(),
-                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
-                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
-                    })
-                    .ToListAsync();
+                        IsFavirite = product.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                        IsAdded = product.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                    });
+                }
 
-                return Result<ICollection<ProductDto>>.Success(productList);
+                return Result<ICollection<ProductDto>>.Success(productDtos);
             }
             catch
             {
@@ -337,10 +369,12 @@ namespace marketplace_practice.Services
             string? name,
             string? description,
             decimal? price,
+            decimal? promotionalPrice,
+            short? size,
             Currency? currency,
-            string? category,
-            string? subcategory,
-            ICollection<string>? imagesUrl)
+            ICollection<CategoryHierarchyDto>? categoryHierarchies,
+            ICollection<string>? imagesUrl,
+            int? stockQuantity)
         {
             // Валидация ID товара
             if (!long.TryParse(productId, out var id))
@@ -359,137 +393,143 @@ namespace marketplace_practice.Services
 
             try
             {
-                // Проверка прав доступа и получение базовой информации о продукте
-                var productInfo = await _appDbContext.Products
-                    .Where(p => p.Id == id)
-                    .Select(p => new
-                    {
-                        Product = p,
-                        HasAccess = p.UserId == currentUserId || userPrincipal.IsInRole("Admin")
-                    })
-                    .FirstOrDefaultAsync();
+                // Проверка прав доступа и получение продукта
+                var product = await _appDbContext.Products
+                    .Include(p => p.User)
+                    .Include(p => p.Categories)
+                    .Include(p => p.ProductImages)
+                    .Include(p => p.FavoriteProducts)
+                    .Include(p => p.CartItems)
+                        .ThenInclude(ci => ci.Cart)
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
-                if (productInfo == null)
+                if (product == null)
                 {
                     return Result<ProductDto>.Failure("Товар не найден");
                 }
 
-                if (!productInfo.HasAccess)
+                if (product.UserId != currentUserId && !userPrincipal.IsInRole("Admin"))
                 {
                     return Result<ProductDto>.Failure("Отказано в доступе");
                 }
-
-                var product = productInfo.Product;
 
                 // Обновление основных полей
                 if (!string.IsNullOrEmpty(name)) product.Name = name;
                 if (description != null) product.Description = description;
                 if (price.HasValue) product.Price = price.Value;
                 if (currency.HasValue) product.Currency = currency.Value;
+                if (promotionalPrice.HasValue) product.PromotionalPrice = promotionalPrice;
+                if (size.HasValue) product.Size = size.Value;
+                if (stockQuantity.HasValue) product.StockQuantity = stockQuantity.Value;
                 product.UpdatedAt = DateTime.UtcNow;
 
-                // Обновление категории/подкатегории (только если указаны)
-                if (category != null || subcategory != null)
+                // Обновление категорий (если указаны)
+                if (categoryHierarchies != null)
                 {
-                    await UpdateProductGroupsAsync(product, category, subcategory);
+                    await UpdateProductCategoriesAsync(product, categoryHierarchies);
                 }
 
-                // Обновление изображений (только если указаны)
+                // Обновление изображений (если указаны)
                 if (imagesUrl != null)
                 {
                     await UpdateProductImagesAsync(product.Id, imagesUrl);
                 }
 
                 await _appDbContext.SaveChangesAsync();
+
+                // Построение иерархий категорий для DTO
+                var resultCategoryHierarchies = product.Categories
+                    .Select(c => BuildCategoryHierarchy(c))
+                    .ToList();
+
                 await transaction.CommitAsync();
 
-                // Получение обновленного продукта с проекцией в DTO
-                var productDto = await _appDbContext.Products
-                    .Where(p => p.Id == id)
-                    .Select(p => new ProductDto
+                return Result<ProductDto>.Success(new ProductDto
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    Description = product.Description,
+                    Price = product.Price,
+                    PromotionalPrice = product.PromotionalPrice,
+                    Size = product.Size,
+                    StockQuantity = product.StockQuantity,
+                    Currency = product.Currency,
+                    IsActive = product.IsActive,
+                    CreatedAt = product.CreatedAt,
+                    UpdatedAt = product.UpdatedAt,
+                    Owner = new UserBriefInfoDto
                     {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Description = p.Description,
-                        Price = p.Price,
-                        Currency = p.Currency,
-                        IsActive = p.IsActive,
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt,
-                        Owner = new UserBriefInfoDto
+                        Id = product.User.Id,
+                        FirstName = product.User.FirstName,
+                        LastName = product.User.LastName,
+                        Email = product.User.Email!,
+                        PhoneNumber = product.User.PhoneNumber
+                    },
+                    CategoryHierarchies = resultCategoryHierarchies,
+                    ProductImages = product.ProductImages
+                        .OrderByDescending(pi => pi.IsMain)
+                        .Select(pi => new ProductImageDto
                         {
-                            Id = p.User.Id,
-                            FirstName = p.User.FirstName,
-                            LastName = p.User.LastName,
-                            Email = p.User.Email!,
-                            PhoneNumber = p.User.PhoneNumber
-                        },
-                        Groups = p.Groups.Select(g => new GroupDto
-                        {
-                            Category = g.Category.Name,
-                            Subcategory = g.Subcategory != null ? g.Subcategory.Name : null
+                            Url = pi.Url,
+                            IsMain = pi.IsMain
                         }).ToList(),
-                        ProductImages = p.ProductImages
-                            .OrderByDescending(pi => pi.IsMain)
-                            .Select(pi => new ProductImageDto
-                            {
-                                Url = pi.Url,
-                                IsMain = pi.IsMain
-                            }).ToList(),
-                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
-                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
-                    })
-                    .FirstAsync();
-
-                return Result<ProductDto>.Success(productDto);
+                    IsFavirite = product.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                    IsAdded = product.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                });
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw;
+                return Result<ProductDto>.Failure($"Ошибка при обновлении товара: {ex.Message}");
             }
         }
 
-        private async Task UpdateProductGroupsAsync(Product product, string? category, string? subcategory)
+        private async Task UpdateProductCategoriesAsync(
+            Product product, 
+            ICollection<CategoryHierarchyDto> categoryHierarchies)
         {
             // Удаление старых связей
-            product.Groups.Clear();
+            product.Categories.Clear();
 
-            if (string.IsNullOrEmpty(category))
-                return;
-
-            // Поиск или создание группы
-            var group = await _appDbContext.Groups
-                .Include(g => g.Category)
-                .Include(g => g.Subcategory)
-                .FirstOrDefaultAsync(g => g.Category.Name == category &&
-                    (string.IsNullOrEmpty(subcategory)
-                        ? g.Subcategory == null
-                        : g.Subcategory != null && g.Subcategory.Name == subcategory));
-
-            if (group == null)
+            // Обработка каждой иерархии категорий
+            foreach (var hierarchy in categoryHierarchies)
             {
-                var categoryEntity = await _appDbContext.Categories
-                    .FirstOrDefaultAsync(c => c.Name == category)
-                    ?? new Category { Name = category };
+                var currentLevel = hierarchy;
+                Category? parentCategory = null;
+                Category? lastCategory = null;
 
-                Subcategory? subcategoryEntity = null;
-                if (!string.IsNullOrEmpty(subcategory))
+                while (currentLevel != null)
                 {
-                    subcategoryEntity = await _appDbContext.Subcategories
-                        .FirstOrDefaultAsync(s => s.Name == subcategory)
-                        ?? new Subcategory { Name = subcategory };
+                    // Поиск или создание категории
+                    var category = await _appDbContext.Categories
+                        .FirstOrDefaultAsync(c => c.Name == currentLevel.Name &&
+                                               c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null))
+                        ?? new Category
+                        {
+                            Name = currentLevel.Name,
+                            ParentCategoryId = parentCategory?.Id,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        };
+
+                    if (category.Id == 0)
+                    {
+                        await _appDbContext.Categories.AddAsync(category);
+                        await _appDbContext.SaveChangesAsync(); // Сохраняем чтобы получить Id
+                    }
+
+                    lastCategory = category;
+                    parentCategory = category;
+                    currentLevel = currentLevel.Child;
+
+                    // Добавляем только конечные категории к продукту
+                    if (currentLevel == null)
+                    {
+                        product.Categories.Add(category);
+                    }
                 }
-
-                group = new Group
-                {
-                    Category = categoryEntity,
-                    Subcategory = subcategoryEntity
-                };
-                _appDbContext.Groups.Add(group);
             }
-
-            product.Groups.Add(group);
         }
 
         private async Task UpdateProductImagesAsync(long productId, ICollection<string> imagesUrl)
@@ -500,18 +540,21 @@ namespace marketplace_practice.Services
                 .ExecuteDeleteAsync();
 
             // Добавление новых изображений
-            var productImages = imagesUrl
-                .Select((url, index) => new ProductImage
-                {
-                    ProductId = productId,
-                    Url = url,
-                    IsMain = index == 0,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                })
-                .ToList();
+            if (imagesUrl.Any())
+            {
+                var productImages = imagesUrl
+                    .Select((url, index) => new ProductImage
+                    {
+                        ProductId = productId,
+                        Url = url,
+                        IsMain = index == 0,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    })
+                    .ToList();
 
-            await _appDbContext.ProductImages.AddRangeAsync(productImages);
+                await _appDbContext.ProductImages.AddRangeAsync(productImages);
+            }
         }
 
         public async Task<Result<string>> DeleteProductAsync(ClaimsPrincipal userPrincipal, string productId)
@@ -535,7 +578,7 @@ namespace marketplace_practice.Services
                 // Получение продукта со всеми зависимостями, которые нужно удалить
                 var product = await _appDbContext.Products
                     .Include(p => p.ProductImages)
-                    .Include(p => p.OrderItems)
+                    .Include(p => p.CartItems)
                     .Include(p => p.FavoriteProducts)
                     .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -566,6 +609,44 @@ namespace marketplace_practice.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+
+
+        // Вспомогательный метод для построения иерархии категорий
+        private CategoryHierarchyDto BuildCategoryHierarchy(Category category)
+        {
+            // Собираем цепочку категорий от текущей до корня
+            var categories = new List<Category>();
+            var current = category;
+            while (current != null)
+            {
+                categories.Add(current);
+                current = current.ParentCategory;
+            }
+
+            // Разворачиваем цепочку (от корня к текущей)
+            categories.Reverse();
+
+            // Строим иерархию DTO
+            CategoryHierarchyDto root = null;
+            CategoryHierarchyDto currentDto = null;
+
+            foreach (var cat in categories)
+            {
+                if (root == null)
+                {
+                    root = new CategoryHierarchyDto { Name = cat.Name };
+                    currentDto = root;
+                }
+                else
+                {
+                    currentDto.Child = new CategoryHierarchyDto { Name = cat.Name };
+                    currentDto = currentDto.Child;
+                }
+            }
+
+            return root;
         }
     }
 }

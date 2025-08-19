@@ -22,147 +22,147 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
-        [HttpPost]
-        [Authorize]
-        [ValidateModel]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Create([FromBody] CreateOrderDto createOrderDto)
-        {
-            try
-            {
-                var result = await _orderService.CreateOrderAsync(
-                    User,
-                    createOrderDto.productQuantities,
-                    createOrderDto.Currency,
-                    createOrderDto.FullName,
-                    createOrderDto.PhoneNumber,
-                    createOrderDto.Country,
-                    createOrderDto.PostalCode);
+        //[HttpPost]
+        //[Authorize]
+        //[ValidateModel]
+        //[ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> Create([FromBody] CreateOrderDto createOrderDto)
+        //{
+        //    try
+        //    {
+        //        var result = await _orderService.CreateOrderAsync(
+        //            User,
+        //            createOrderDto.productQuantities,
+        //            createOrderDto.Currency,
+        //            createOrderDto.FullName,
+        //            createOrderDto.PhoneNumber,
+        //            createOrderDto.Country,
+        //            createOrderDto.PostalCode);
 
-                if (result.IsSuccess)
-                {
-                    _logger.LogInformation("Заказ успешно создан");
-                    return StatusCode(201, result.Value);
-                }
+        //        if (result.IsSuccess)
+        //        {
+        //            _logger.LogInformation("Заказ успешно создан");
+        //            return StatusCode(201, result.Value);
+        //        }
 
-                _logger.LogWarning("Ошибка при создании заказа: {Errors}",
-                    string.Join(", ", result.Errors));
+        //        _logger.LogWarning("Ошибка при создании заказа: {Errors}",
+        //            string.Join(", ", result.Errors));
 
-                return HandleFailure(result.Errors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при создании заказа");
-                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
+        //        return HandleFailure(result.Errors);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Ошибка при создании заказа");
+        //        return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+        //    }
+        //}
 
-        [HttpGet("{orderId}")]
-        [Authorize]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Get([FromRoute] string orderId)
-        {
-            try
-            {
-                var result = await _orderService.GetOrderByIdAsync(User, orderId);
+        //[HttpGet("{orderId}")]
+        //[Authorize]
+        //[ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        //[ProducesResponseType(StatusCodes.Status403Forbidden)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> Get([FromRoute] string orderId)
+        //{
+        //    try
+        //    {
+        //        var result = await _orderService.GetOrderByIdAsync(User, orderId);
 
-                if (result.IsSuccess)
-                {
-                    return Ok(result.Value);
-                }
+        //        if (result.IsSuccess)
+        //        {
+        //            return Ok(result.Value);
+        //        }
 
-                return HandleFailure(result.Errors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при получении заказа c ID = '{OrderId}'", orderId);
-                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
+        //        return HandleFailure(result.Errors);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Ошибка при получении заказа c ID = '{OrderId}'", orderId);
+        //        return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+        //    }
+        //}
 
-        [HttpPatch("{orderId}")]
-        [Authorize]
-        [ValidateModel]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Update(
-            [FromRoute] string orderId,
-            [FromBody] UpdateOrderDto updateOrderDto)
-        {
-            try
-            {
-                var result = await _orderService.UpdateOrderAsync(
-                    User,
-                    orderId,
-                    updateOrderDto.OrderStatus,
-                    updateOrderDto.productQuantities,
-                    updateOrderDto.FullName,
-                    updateOrderDto.PhoneNumber,
-                    updateOrderDto.Country,
-                    updateOrderDto.PostalCode);
+        //[HttpPatch("{orderId}")]
+        //[Authorize]
+        //[ValidateModel]
+        //[ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        //[ProducesResponseType(StatusCodes.Status403Forbidden)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> Update(
+        //    [FromRoute] string orderId,
+        //    [FromBody] UpdateOrderDto updateOrderDto)
+        //{
+        //    try
+        //    {
+        //        var result = await _orderService.UpdateOrderAsync(
+        //            User,
+        //            orderId,
+        //            updateOrderDto.OrderStatus,
+        //            updateOrderDto.productQuantities,
+        //            updateOrderDto.FullName,
+        //            updateOrderDto.PhoneNumber,
+        //            updateOrderDto.Country,
+        //            updateOrderDto.PostalCode);
 
-                if (result.IsSuccess)
-                {
-                    _logger.LogInformation("Данные заказа c ID = '{OrderId}' успешно обновлены", orderId);
-                    return Ok(result.Value);
-                }
+        //        if (result.IsSuccess)
+        //        {
+        //            _logger.LogInformation("Данные заказа c ID = '{OrderId}' успешно обновлены", orderId);
+        //            return Ok(result.Value);
+        //        }
 
-                _logger.LogWarning("Ошибка при обновлении данных заказа с ID = '{OrderId}': {Errors}",
-                    orderId, string.Join(", ", result.Errors));
+        //        _logger.LogWarning("Ошибка при обновлении данных заказа с ID = '{OrderId}': {Errors}",
+        //            orderId, string.Join(", ", result.Errors));
 
-                return HandleFailure(result.Errors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при обновлении данных заказа c ID = '{OrderId}'", orderId);
-                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
+        //        return HandleFailure(result.Errors);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Ошибка при обновлении данных заказа c ID = '{OrderId}'", orderId);
+        //        return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+        //    }
+        //}
 
-        [HttpDelete("{orderId}")]
-        [Authorize]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Delete([FromRoute] string orderId)
-        {
-            try
-            {
-                var result = await _orderService.DeleteOrderAsync(User, orderId);
+        //[HttpDelete("{orderId}")]
+        //[Authorize]
+        //[ProducesResponseType(StatusCodes.Status204NoContent)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        //[ProducesResponseType(StatusCodes.Status403Forbidden)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status409Conflict)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> Delete([FromRoute] string orderId)
+        //{
+        //    try
+        //    {
+        //        var result = await _orderService.DeleteOrderAsync(User, orderId);
 
-                if (result.IsSuccess)
-                {
-                    _logger.LogInformation("Заказ c ID = '{OrderId}' успешно удалён", orderId);
-                    return NoContent();
-                }
+        //        if (result.IsSuccess)
+        //        {
+        //            _logger.LogInformation("Заказ c ID = '{OrderId}' успешно удалён", orderId);
+        //            return NoContent();
+        //        }
 
-                _logger.LogWarning("Ошибка при удалении заказа с ID = '{OrderId}': {Errors}",
-                    orderId, string.Join(", ", result.Errors));
+        //        _logger.LogWarning("Ошибка при удалении заказа с ID = '{OrderId}': {Errors}",
+        //            orderId, string.Join(", ", result.Errors));
 
-                return HandleFailure(result.Errors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при удалении заказа c ID = '{OrderId}'", orderId);
-                return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
-            }
-        }
+        //        return HandleFailure(result.Errors);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Ошибка при удалении заказа c ID = '{OrderId}'", orderId);
+        //        return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
+        //    }
+        //}
 
         private IActionResult HandleFailure(IEnumerable<string> errors)
         {

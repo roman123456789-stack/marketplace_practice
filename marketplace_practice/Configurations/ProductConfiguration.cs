@@ -15,6 +15,9 @@ namespace marketplace_practice.Configurations
             builder.Property(p => p.Name).HasColumnName("name").HasMaxLength(50).IsRequired();
             builder.Property(p => p.Description).HasColumnName("description");
             builder.Property(p => p.Price).HasColumnName("price").HasColumnType("money").IsRequired();
+            builder.Property(p => p.PromotionalPrice).HasColumnName("promotional_price").HasColumnType("money");
+            builder.Property(p => p.Size).HasColumnName("size");
+            builder.Property(p => p.StockQuantity).HasColumnName("stock_quantity").IsRequired();
             builder.Property(p => p.Currency).HasColumnName("currency").HasConversion<string>().HasMaxLength(100).IsRequired();
             builder.Property(p => p.IsActive).HasColumnName("is_active").IsRequired();
             builder.Property(p => p.CreatedAt).HasColumnName("created_at").IsRequired();
@@ -26,17 +29,17 @@ namespace marketplace_practice.Configurations
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired();
 
-            builder.HasMany(p => p.Groups)
-                .WithMany(g => g.Products)
+            builder.HasMany(p => p.Categories)
+                .WithMany(c => c.Products)
                 .UsingEntity<Dictionary<string, object>>(
-                    "product_category_groups",
-                    j => j.HasOne<Group>().WithMany()
-                        .HasForeignKey("group_id")
+                    "product_categories",
+                    j => j.HasOne<Category>().WithMany()
+                        .HasForeignKey("category_id")
                         .OnDelete(DeleteBehavior.Cascade),
                     j => j.HasOne<Product>().WithMany()
                         .HasForeignKey("product_id")
                         .OnDelete(DeleteBehavior.Cascade),
-                    j => j.HasKey("group_id", "product_id")
+                    j => j.HasKey("category_id", "product_id")
                 );
         }
     }

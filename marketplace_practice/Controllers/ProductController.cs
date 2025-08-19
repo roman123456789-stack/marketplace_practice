@@ -38,10 +38,12 @@ namespace marketplace_practice.Controllers
                     createProductDto.Name,
                     createProductDto.Description,
                     createProductDto.Price,
+                    createProductDto.PromotionalPrice,
+                    createProductDto.Size,
                     createProductDto.Currency,
-                    createProductDto.Category,
-                    createProductDto.Subcategory,
-                    createProductDto.ImagesUrl);
+                    createProductDto.CategoryHierarchy,
+                    createProductDto.ImagesUrl,
+                    createProductDto.StockQuantity);
 
                 if (result.IsSuccess)
                 {
@@ -138,10 +140,12 @@ namespace marketplace_practice.Controllers
                     updateProductDto.Name,
                     updateProductDto.Description,
                     updateProductDto.Price,
+                    updateProductDto.PromotionalPrice,
+                    updateProductDto.Size,
                     updateProductDto.Currency,
-                    updateProductDto.Category,
-                    updateProductDto.Subcategory,
-                    updateProductDto.ImagesUrl);
+                    updateProductDto.CategoryHierarchy,
+                    updateProductDto.ImagesUrl,
+                    updateProductDto.StockQuantity);
 
                 if (result.IsSuccess)
                 {

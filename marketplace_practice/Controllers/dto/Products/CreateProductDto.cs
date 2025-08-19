@@ -15,17 +15,23 @@ namespace marketplace_practice.Controllers.dto.Products
         [Range(0.01, double.MaxValue, ErrorMessage = "Цена должна быть больше 0")]
         public decimal Price { get; set; }
 
+        [Range(0.01, double.MaxValue, ErrorMessage = "Цена должна быть больше 0")]
+        public decimal PromotionalPrice { get; set; }
+
+        [Range(1, short.MaxValue, ErrorMessage = "Размер должен быть больше 0")]
+        public short Size { get; set; }
+
         [Required(ErrorMessage = "Поле 'Currency' не может быть пустым")]
         [RegularExpression("^(RUB|USD|EUR|CNY)$", ErrorMessage = "Неверный формат валюты (допустимо: RUB, USD, EUR, CNY))")]
         public Currency Currency { get; set; }
 
-        [Required(ErrorMessage = "Поле 'Category' не может быть пустым")]
-        [StringLength(100, ErrorMessage = "Поле не может быть длиннее 100 символов")]
-        public string Category { get; set; }
-
-        [StringLength(100, ErrorMessage = "Поле не может быть длиннее 100 символов")]
-        public string? Subcategory { get; set; }
+        [Required(ErrorMessage = "Поле 'CategoryHierarchy' не может быть пустым")]
+        public ICollection<CategoryHierarchyDto> CategoryHierarchy { get; set; }
 
         public ICollection<string>? ImagesUrl { get; set; }
+
+        [Required(ErrorMessage = "Поле 'StockQuantity' не может быть пустым")]
+        [Range(0, int.MaxValue, ErrorMessage = "Количество не может быть отрицательным")]
+        public int StockQuantity { get; set; }
     }
 }
