@@ -5,12 +5,11 @@ namespace marketplace_practice.Controllers.dto.Orders
 {
     public class CreateOrderDto
     {
-        [Required(ErrorMessage = "Поле 'ProductsId' не может быть пустым")]
-        public Dictionary<long, int> productQuantities { get; set; }
+        [Required(ErrorMessage = "Поле 'CartItemQuantities' не может быть пустым")]
+        public Dictionary<long, int> CartItemQuantities { get; set; }
 
-        [Required(ErrorMessage = "Поле 'Currency' не может быть пустым")]
         [RegularExpression("^(RUB|USD|EUR|CNY)$", ErrorMessage = "Неверный формат валюты (допустимо: RUB, USD, EUR, CNY))")]
-        public Currency Currency { get; set; }
+        public Currency Currency { get; set; } = Currency.RUB;
 
 
         //[Required(ErrorMessage = "Поле 'Type' не может быть пустым")]

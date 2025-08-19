@@ -6,7 +6,7 @@ namespace marketplace_practice.Controllers.dto.Orders
     public class UpdateOrderDto
     {
         public OrderStatus? OrderStatus { get; set; }
-        public Dictionary<long, int>? productQuantities { get; set; }
+        public Dictionary<long, int>? CartItemQuantities { get; set; }
 
 
         //[StringLength(50, ErrorMessage = "Поле не может быть длиннее 50 символов")]
