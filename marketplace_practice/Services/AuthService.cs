@@ -114,10 +114,9 @@ namespace marketplace_practice.Services
         {
             // Получение роли/ролей пользователя
             var roles = await _userManager.GetRolesAsync(user);
-            var role = roles.FirstOrDefault(); // над этим еще нужно подумать
 
             // Генерация токенов доступа
-            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
+            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email!, roles);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             // Сохраниение refresh-токена в БД
@@ -173,7 +172,7 @@ namespace marketplace_practice.Services
                     && (user.ExpiresAt.Value - DateTime.UtcNow).TotalDays < 1;
 
                 // Генерация токенов
-                AuthTokensDto authTokens;
+                AuthTokensDto? authTokens;
                 if (shouldRefreshToken)
                 {
                     // Генерация новых токенов (включая refresh-токен)
@@ -183,8 +182,7 @@ namespace marketplace_practice.Services
                 {
                     // Генерация только нового access-токена (refresh-токен остается прежним)
                     var roles = await _userManager.GetRolesAsync(user);
-                    var role = roles.FirstOrDefault();
-                    var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, role);
+                    var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email!, roles);
 
                     authTokens = new AuthTokensDto
                     {

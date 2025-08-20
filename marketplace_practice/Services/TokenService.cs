@@ -17,18 +17,22 @@ namespace marketplace_practice.Services
             _jwtConfig = jwtConfig.Value;
         }
 
-        public Token GenerateAccessToken(long userId, string email, string role, bool isVerified = false)
+        public Token GenerateAccessToken(long userId, string email, IEnumerable<string> roles, bool isVerified = false)
         {
             var tokenExpiration = TimeSpan.FromMinutes(double.Parse(_jwtConfig.Lifetime));
             var tokenExpirationDate = DateTime.UtcNow.Add(tokenExpiration);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Email, email),
-                new Claim(ClaimTypes.Role, role),
                 new Claim("is_verified", isVerified.ToString().ToLower(), ClaimValueTypes.Boolean)
             };
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.Key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
