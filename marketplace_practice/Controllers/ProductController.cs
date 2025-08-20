@@ -64,7 +64,6 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpGet("{productId}")]
-        [Authorize]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -92,7 +91,6 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpGet]
-        [Authorize]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

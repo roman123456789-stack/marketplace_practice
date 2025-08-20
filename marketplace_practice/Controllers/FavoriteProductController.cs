@@ -1,5 +1,5 @@
-﻿using marketplace_practice.Services;
-using marketplace_practice.Services.dto.Products;
+﻿using marketplace_practice.Services.dto.Products;
+using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,14 +8,14 @@ namespace marketplace_practice.Controllers
     [ApiController]
     [Route("favoriteProducts")]
     [Produces("application/json")]
-    [ApiExplorerSettings(GroupName = "FavoriteProducts")]
+    [ApiExplorerSettings(GroupName = "Products")]
     public class FavoriteProductController : ControllerBase
     {
-        private readonly FavoriteProductService _favoriteProductService; // добавить интерфейс
+        private readonly IFavoriteProductService _favoriteProductService;
         private readonly ILogger<FavoriteProductController> _logger;
 
         public FavoriteProductController(
-            FavoriteProductService favoriteProductService,
+            IFavoriteProductService favoriteProductService,
             ILogger<FavoriteProductController> logger)
         {
             _favoriteProductService = favoriteProductService;

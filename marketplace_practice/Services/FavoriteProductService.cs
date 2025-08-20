@@ -1,13 +1,14 @@
 ﻿using marketplace_practice.Models;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.dto.Users;
+using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace marketplace_practice.Services
 {
-    public class FavoriteProductService
+    public class FavoriteProductService : IFavoriteProductService
     {
         private readonly AppDbContext _appDbContext;
 

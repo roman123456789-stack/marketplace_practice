@@ -169,65 +169,62 @@ namespace marketplace_practice.Services
                 return Result<ProductDto>.Failure("Неверный формат ID товара");
             }
 
-            // Получение текущего пользователя
+            long? currentUserId = null;
+
+            // Получение ID пользователя только если он авторизован
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            if (!string.IsNullOrEmpty(userId) && long.TryParse(userId, out var parsedUserId))
             {
-                return Result<ProductDto>.Failure("Не удалось идентифицировать пользователя");
+                currentUserId = parsedUserId;
             }
 
             try
             {
-                // Загрузка продукта с связанными данными
-                var product = await _appDbContext.Products
-                    .Include(p => p.User)
-                    .Include(p => p.ProductImages)
-                    .Include(p => p.Categories)
-                        .ThenInclude(c => c.ParentCategory)
-                        .ThenInclude(c => c.ParentCategory)
-                    .Include(p => p.FavoriteProducts)
-                    .Include(p => p.CartItems)
-                        .ThenInclude(ci => ci.Cart)
-                    .AsSplitQuery()
-                    .FirstOrDefaultAsync(p => p.Id == id);
-
-                if (product == null)
-                {
-                    return Result<ProductDto>.Failure("Товар не найден");
-                }
-
-                // Формирование DTO
-                var productDto = new ProductDto
-                {
-                    Id = product.Id,
-                    Name = product.Name,
-                    Description = product.Description,
-                    Price = product.Price,
-                    PromotionalPrice = product.PromotionalPrice,
-                    Size = product.Size,
-                    StockQuantity = product.StockQuantity,
-                    Currency = product.Currency,
-                    IsActive = product.IsActive,
-                    CreatedAt = product.CreatedAt,
-                    UpdatedAt = product.UpdatedAt,
-                    Owner = new UserBriefInfoDto
+                // Оптимизированный запрос с проекцией в DTO
+                var productDto = await _appDbContext.Products
+                    .AsNoTracking()
+                    .Where(p => p.Id == id && p.IsActive)
+                    .Select(p => new ProductDto
                     {
-                        Id = product.User.Id,
-                        FirstName = product.User.FirstName,
-                        LastName = product.User.LastName,
-                        Email = product.User.Email!,
-                        PhoneNumber = product.User.PhoneNumber
-                    },
-                    ProductImages = product.ProductImages
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        PromotionalPrice = p.PromotionalPrice,
+                        Size = p.Size,
+                        StockQuantity = p.StockQuantity,
+                        Currency = p.Currency,
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
+                        Owner = new UserBriefInfoDto
+                        {
+                            Id = p.User.Id,
+                            FirstName = p.User.FirstName,
+                            LastName = p.User.LastName,
+                            Email = p.User.Email!,
+                            PhoneNumber = p.User.PhoneNumber
+                        },
+                        ProductImages = p.ProductImages
                         .OrderByDescending(pi => pi.IsMain)
                         .Select(pi => new ProductImageDto
                         {
                             Url = pi.Url,
                             IsMain = pi.IsMain
                         }).ToList(),
-                    IsFavirite = product.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
-                    IsAdded = product.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
-                };
+                        IsFavirite = currentUserId.HasValue
+                            ? p.FavoriteProducts.Any(fp => fp.UserId == currentUserId.Value)
+                            : false,
+                        IsAdded = currentUserId.HasValue
+                            ? p.CartItems.Any(ci => ci.Cart.UserId == currentUserId.Value)
+                            : false
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (productDto == null)
+                {
+                    return Result<ProductDto>.Failure("Товар не найден");
+                }
 
                 return Result<ProductDto>.Success(productDto);
             }
@@ -272,58 +269,42 @@ namespace marketplace_practice.Services
 
             try
             {
-                // Оптимизированный запрос с загрузкой всех необходимых данных
-                var products = await _appDbContext.Products
+                // Оптимизированный запрос с проекцией в DTO
+                var productDtos = await _appDbContext.Products
                     .AsNoTracking()
-                    .Where(p => p.UserId == resolvedUserId)
-                    .OrderByDescending(p => p.CreatedAt)
-                    .Include(p => p.User)
-                    .Include(p => p.ProductImages)
-                    .Include(p => p.Categories)
-                        .ThenInclude(c => c.ParentCategory)
-                        .ThenInclude(c => c.ParentCategory)
-                    .Include(p => p.FavoriteProducts)
-                    .Include(p => p.CartItems)
-                        .ThenInclude(ci => ci.Cart)
-                    .AsSplitQuery()
-                    .ToListAsync();
-
-                // Формирование DTO
-                var productDtos = new List<ProductDto>();
-                foreach (var product in products)
-                {
-                    productDtos.Add(new ProductDto
+                    .Where(p => p.UserId == resolvedUserId && p.IsActive)
+                    .Select(p => new ProductDto
                     {
-                        Id = product.Id,
-                        Name = product.Name,
-                        Description = product.Description,
-                        Price = product.Price,
-                        PromotionalPrice = product.PromotionalPrice,
-                        Size = product.Size,
-                        StockQuantity = product.StockQuantity,
-                        Currency = product.Currency,
-                        IsActive = product.IsActive,
-                        CreatedAt = product.CreatedAt,
-                        UpdatedAt = product.UpdatedAt,
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        PromotionalPrice = p.PromotionalPrice,
+                        Size = p.Size,
+                        StockQuantity = p.StockQuantity,
+                        Currency = p.Currency,
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
                         Owner = new UserBriefInfoDto
                         {
-                            Id = product.User.Id,
-                            FirstName = product.User.FirstName,
-                            LastName = product.User.LastName,
-                            Email = product.User.Email!,
-                            PhoneNumber = product.User.PhoneNumber
+                            Id = p.User.Id,
+                            FirstName = p.User.FirstName,
+                            LastName = p.User.LastName,
+                            Email = p.User.Email!,
+                            PhoneNumber = p.User.PhoneNumber
                         },
-                        ProductImages = product.ProductImages
-                            .OrderByDescending(pi => pi.IsMain)
-                            .Select(pi => new ProductImageDto
-                            {
-                                Url = pi.Url,
-                                IsMain = pi.IsMain
-                            }).ToList(),
-                        IsFavirite = product.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
-                        IsAdded = product.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
-                    });
-                }
+                        ProductImages = p.ProductImages
+                        .OrderByDescending(pi => pi.IsMain)
+                        .Select(pi => new ProductImageDto
+                        {
+                            Url = pi.Url,
+                            IsMain = pi.IsMain
+                        }).ToList(),
+                        IsFavirite = p.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                        IsAdded = p.CartItems.Any(ci => ci.Cart.UserId == currentUserId)
+                    })
+                    .ToListAsync();
 
                 return Result<ICollection<ProductDto>>.Success(productDtos);
             }

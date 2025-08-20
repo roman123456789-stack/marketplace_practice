@@ -196,7 +196,7 @@ namespace marketplace_practice.Services
 
             try
             {
-                // Оптимизированный запрос с проекцией в DTO через CartItem
+                // Оптимизированный запрос с проекцией в DTO
                 var orderDto = await _appDbContext.Orders
                     .AsNoTracking()
                     .Where(o => o.Id == id)
