@@ -200,15 +200,23 @@ namespace marketplace_practice.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadImage([FromForm] IFormFile image)
+        public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
         {
-            if (image == null || image.Length == 0)
-                return BadRequest("No file uploaded.");
+            if (images == null || images.Count == 0)
+                return BadRequest("No files uploaded.");
+
+            // Опционально: ограничение количества
+            if (images.Count > 10)
+                return BadRequest("Maximum 10 files allowed.");
 
             try
             {
-                var url = await _fileUploadService.SaveProductImageAsync(image);
-                return Ok(new { url }); // вернёт { "url": "/uploads/products/abc123.jpg" }
+                var urls = await _fileUploadService.SaveFilesAsync(images, "products");
+
+                return Ok(new
+                {
+                    urls,               
+                });
             }
             catch (ArgumentException ex)
             {
@@ -216,7 +224,7 @@ namespace marketplace_practice.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, "An error occurred while saving the file.");
+                return StatusCode(500, "An error occurred while saving the files.");
             }
         }
 

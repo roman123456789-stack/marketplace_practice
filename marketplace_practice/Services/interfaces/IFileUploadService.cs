@@ -2,6 +2,7 @@
 {
     public interface IFileUploadService
     {
-        Task<string> SaveProductImageAsync(IFormFile file);
+        Task<string> SaveFileAsync(IFormFile file, string subPath);
+        Task<List<string>> SaveFilesAsync(List<IFormFile> files, string subPath);
     }
 }
