@@ -1,5 +1,6 @@
 ﻿using marketplace_practice.Controllers.dto.Products;
 using marketplace_practice.Middlewares;
+using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -15,11 +16,13 @@ namespace marketplace_practice.Controllers
     {
         private readonly IProductService _productService;
         private readonly ILogger<ProductController> _logger;
+        private readonly IFileUploadService _fileUploadService;
 
-        public ProductController(IProductService productsService, ILogger<ProductController> logger)
+        public ProductController(IProductService productsService, ILogger<ProductController> logger, IFileUploadService fileUploadService)
         {
             _productService = productsService;
             _logger = logger;
+            _fileUploadService = fileUploadService;
         }
 
         [HttpPost]
@@ -195,6 +198,28 @@ namespace marketplace_practice.Controllers
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadImage([FromForm] IFormFile image)
+        {
+            if (image == null || image.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            try
+            {
+                var url = await _fileUploadService.SaveProductImageAsync(image);
+                return Ok(new { url }); // вернёт { "url": "/uploads/products/abc123.jpg" }
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "An error occurred while saving the file.");
+            }
+        }
+
 
         private IActionResult HandleFailure(IEnumerable<string> errors)
         {

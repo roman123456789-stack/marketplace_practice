@@ -18,7 +18,7 @@ namespace marketplace_practice.Services
                 throw new ArgumentException("File is too large. Maximum size is 5 MB.");
 
             // 3. Путь: wwwroot/uploads/products/
-            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "products");
+            var uploadsDir = Path.Combine("wwwroot", "uploads", "products");
             Directory.CreateDirectory(uploadsDir); // создаст папку, если нет
 
             // 4. Уникальное имя файла
