@@ -36,6 +36,7 @@ builder.Services.AddScoped<IFavoriteProductService, FavoriteProductService>();
 builder.Services.AddScoped<IFeaturedProductsService, FeaturedProductsService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddEndpointsApiExplorer();
 
 // ƒÀﬂ ÀŒ ¿À‹ÕŒ√Œ «¿œ”— ¿
@@ -163,5 +164,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.UseStaticFiles();
 
 app.Run();
