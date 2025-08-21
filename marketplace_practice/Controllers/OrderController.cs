@@ -1,8 +1,6 @@
 ﻿using marketplace_practice.Controllers.dto.Orders;
 using marketplace_practice.Middlewares;
-using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Orders;
-using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

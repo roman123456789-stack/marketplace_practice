@@ -35,6 +35,7 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IFavoriteProductService, FavoriteProductService>();
 builder.Services.AddScoped<IFeaturedProductsService, FeaturedProductsService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddEndpointsApiExplorer();
 
 // ƒÀﬂ ÀŒ ¿À‹ÕŒ√Œ «¿œ”— ¿
@@ -76,6 +77,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("Orders", new OpenApiInfo { Title = "Orders API", Version = "v1" });
     c.SwaggerDoc("Cart", new OpenApiInfo { Title = "Cart API", Version = "v1" });
     c.SwaggerDoc("Admin", new OpenApiInfo { Title = "Admin API", Version = "v1" });
+    c.SwaggerDoc("Catalog", new OpenApiInfo { Title = "Catalog API", Version = "v1" });
     c.SwaggerDoc("Default", new OpenApiInfo { Title = "Default API", Version = "v1" });
 
     // ƒÓ·‡‚ÎˇÂÏ ÔÓ‰‰ÂÊÍÛ JWT ‚ Swagger
@@ -153,6 +155,7 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/Orders/swagger.json", "Orders");
         c.SwaggerEndpoint("/swagger/Cart/swagger.json", "Cart");
         c.SwaggerEndpoint("/swagger/Admin/swagger.json", "Admin");
+        c.SwaggerEndpoint("/swagger/Catalog/swagger.json", "Catalog");
     });
 }
 

@@ -119,7 +119,13 @@ namespace marketplace_practice.Services
                         IsActive = fp.Product.IsActive,
                         CreatedAt = fp.Product.CreatedAt,
                         UpdatedAt = fp.Product.UpdatedAt,
-                        ProductImages = new List<ProductImageDto>(),
+                        ProductImages = fp.Product.ProductImages
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList(),
                         IsFavirite = true,
                         IsAdded = fp.User.Cart.CartItems.Any(ci => ci.ProductId == fp.ProductId)
                     })
