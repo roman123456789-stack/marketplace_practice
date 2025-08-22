@@ -141,7 +141,13 @@ namespace marketplace_practice.Services
                             UserId = ci.Product.UserId,
                             Name = ci.Product.Name,
                             Price = ci.Product.Price,
-                            Currency = ci.Product.Currency
+                            Currency = ci.Product.Currency,
+                            ProductImages = ci.Product.ProductImages
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList()
                         },
                         CreatedAt = ci.CreatedAt,
                         UpdatedAt = ci.UpdatedAt

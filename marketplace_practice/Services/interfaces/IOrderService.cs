@@ -25,7 +25,6 @@ namespace marketplace_practice.Services.interfaces
         public Task<Result<OrderDto>> UpdateOrderAsync(
             ClaimsPrincipal userPrincipal,
             string orderId,
-            OrderStatus? status,
             Dictionary<long, int>? updatedCartItems,
             string? fullName,
             string? phoneNumber,

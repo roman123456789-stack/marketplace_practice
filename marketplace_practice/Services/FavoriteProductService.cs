@@ -158,7 +158,7 @@ namespace marketplace_practice.Services
             try
             {
                 // Поиск закладки
-                var favoriteProduct = _appDbContext.FavoriteProducts.FirstOrDefault(fp => fp.Id == id);
+                var favoriteProduct = _appDbContext.FavoriteProducts.FirstOrDefault(fp => fp.ProductId == id);
 
                 if (favoriteProduct == null)
                 {

@@ -9,5 +9,6 @@ namespace marketplace_practice.Services.dto.Products
         public required string Name { get; set; }
         public decimal Price { get; set; }
         public Currency Currency { get; set; }
+        public ICollection<ProductImageDto>? ProductImages { get; set; }
     }
 }

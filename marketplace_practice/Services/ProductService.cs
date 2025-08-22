@@ -1,7 +1,7 @@
-﻿using marketplace_practice.Models;
+﻿using marketplace_practice.Controllers.dto.Products;
+using marketplace_practice.Models;
 using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto.Products;
-using marketplace_practice.Controllers.dto.Products;
 using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
@@ -77,40 +77,59 @@ namespace marketplace_practice.Services
                 {
                     var currentLevel = hierarchy;
                     Category? parentCategory = null;
-                    Category? lastCategory = null;
+                    Category? targetCategory = null;
 
+                    // Проход по всей иерархии, чтобы найти конечную категорию
                     while (currentLevel != null)
                     {
-                        // Ищем или создаем категорию
+                        // Gjbcr существующей категории
                         var category = await _appDbContext.Categories
                             .FirstOrDefaultAsync(c => c.Name == currentLevel.Name &&
-                                                   c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null))
-                            ?? new Category
-                            {
-                                Name = currentLevel.Name,
-                                ParentCategoryId = parentCategory?.Id,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow,
-                                IsActive = true
-                            };
+                                                   c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null) &&
+                                                   c.IsActive);
 
-                        if (category.Id == 0)
+                        if (category == null)
                         {
-                            await _appDbContext.Categories.AddAsync(category);
-                            await _appDbContext.SaveChangesAsync(); // Сохраняем чтобы получить Id
+                            // Категория не найдена
+                            await transaction.RollbackAsync();
+                            return Result<ProductDto>.Failure($"Категория '{currentLevel.Name}' не найдена" +
+                                (parentCategory != null ? $" в категории '{parentCategory.Name}'" : ""));
                         }
 
-                        lastCategory = category;
                         parentCategory = category;
+                        targetCategory = category;
                         currentLevel = currentLevel.Child;
 
-                        // Добавление только конечных категорий к продукту
+                        // Если это последний уровень в иерархии - выход
                         if (currentLevel == null)
                         {
-                            product.Categories.Add(category);
-                            processedCategories.Add(category);
+                            break;
                         }
                     }
+
+                    // Добавление конечной категории к продукту
+                    if (targetCategory != null)
+                    {
+                        // Проверка, что это действительно конечная категория
+                        var hasSubcategories = await _appDbContext.Categories
+                            .AnyAsync(c => c.ParentCategoryId == targetCategory.Id && c.IsActive);
+
+                        if (hasSubcategories)
+                        {
+                            await transaction.RollbackAsync();
+                            return Result<ProductDto>.Failure($"Категория '{targetCategory.Name}' не является конечной. Укажите конкретную подкатегорию.");
+                        }
+
+                        product.Categories.Add(targetCategory);
+                        processedCategories.Add(targetCategory);
+                    }
+                }
+
+                // Проверка, что товар добавлен хотя бы в одну категорию
+                if (!product.Categories.Any())
+                {
+                    await transaction.RollbackAsync();
+                    return Result<ProductDto>.Failure("Товар не был добавлен ни в одну из категорий");
                 }
 
                 await _appDbContext.Products.AddAsync(product);
@@ -429,51 +448,74 @@ namespace marketplace_practice.Services
             }
         }
 
-        private async Task UpdateProductCategoriesAsync(
-            Product product, 
+        private async Task<Result<string>> UpdateProductCategoriesAsync(
+            Product product,
             ICollection<CategoryHierarchyDto> categoryHierarchies)
         {
-            // Удаление старых связей
-            product.Categories.Clear();
-
-            // Обработка каждой иерархии категорий
-            foreach (var hierarchy in categoryHierarchies)
+            try
             {
-                var currentLevel = hierarchy;
-                Category? parentCategory = null;
-                Category? lastCategory = null;
+                product.Categories.Clear();
 
-                while (currentLevel != null)
+                if (categoryHierarchies == null || !categoryHierarchies.Any())
                 {
-                    // Поиск или создание категории
-                    var category = await _appDbContext.Categories
-                        .FirstOrDefaultAsync(c => c.Name == currentLevel.Name &&
-                                               c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null))
-                        ?? new Category
-                        {
-                            Name = currentLevel.Name,
-                            ParentCategoryId = parentCategory?.Id,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow,
-                            IsActive = true
-                        };
+                    return Result<string>.Failure("Не указаны категории для товара");
+                }
 
-                    if (category.Id == 0)
+                var processedCategories = new List<Category>();
+
+                foreach (var hierarchy in categoryHierarchies)
+                {
+                    var currentLevel = hierarchy;
+                    Category? parentCategory = null;
+                    Category? targetCategory = null;
+
+                    while (currentLevel != null)
                     {
-                        await _appDbContext.Categories.AddAsync(category);
-                        await _appDbContext.SaveChangesAsync(); // Сохраняем чтобы получить Id
+                        var category = await _appDbContext.Categories
+                            .FirstOrDefaultAsync(c => c.Name == currentLevel.Name &&
+                                                   c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null) &&
+                                                   c.IsActive);
+
+                        if (category == null)
+                        {
+                            return Result<string>.Failure($"Категория '{currentLevel.Name}' не найдена" +
+                                (parentCategory != null ? $" в категории '{parentCategory.Name}'" : ""));
+                        }
+
+                        parentCategory = category;
+                        targetCategory = category;
+                        currentLevel = currentLevel.Child;
                     }
 
-                    lastCategory = category;
-                    parentCategory = category;
-                    currentLevel = currentLevel.Child;
-
-                    // Добавляем только конечные категории к продукту
-                    if (currentLevel == null)
+                    // Проверка, что это конечная категория
+                    if (targetCategory != null)
                     {
-                        product.Categories.Add(category);
+                        var hasSubcategories = await _appDbContext.Categories
+                            .AnyAsync(c => c.ParentCategoryId == targetCategory.Id && c.IsActive);
+
+                        if (hasSubcategories)
+                        {
+                            return Result<string>.Failure($"Категория '{targetCategory.Name}' не является конечной. Укажите конкретную подкатегорию.");
+                        }
+
+                        if (!processedCategories.Any(c => c.Id == targetCategory.Id))
+                        {
+                            product.Categories.Add(targetCategory);
+                            processedCategories.Add(targetCategory);
+                        }
                     }
                 }
+
+                if (!product.Categories.Any())
+                {
+                    return Result<string>.Failure("Товар не был добавлен ни в одну из категорий");
+                }
+
+                return Result<string>.Success(string.Empty);
+            }
+            catch (Exception ex)
+            {
+                return Result<string>.Failure($"Ошибка при обновлении категорий товара: {ex.Message}");
             }
         }
 
