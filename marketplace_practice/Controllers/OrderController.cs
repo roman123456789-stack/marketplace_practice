@@ -134,7 +134,6 @@ namespace marketplace_practice.Controllers
                 var result = await _orderService.UpdateOrderAsync(
                     User,
                     orderId,
-                    updateOrderDto.OrderStatus,
                     updateOrderDto.CartItemQuantities,
                     updateOrderDto.FullName,
                     updateOrderDto.PhoneNumber,

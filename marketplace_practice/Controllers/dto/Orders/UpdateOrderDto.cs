@@ -5,7 +5,6 @@ namespace marketplace_practice.Controllers.dto.Orders
 {
     public class UpdateOrderDto
     {
-        public OrderStatus? OrderStatus { get; set; }
         public Dictionary<long, int>? CartItemQuantities { get; set; }
 
 
