@@ -1,4 +1,5 @@
 ﻿using marketplace_practice.Models;
+using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
@@ -115,7 +116,7 @@ namespace marketplace_practice.Services
                             Email = fp.User.Email!,
                             PhoneNumber = fp.User.PhoneNumber
                         },
-                        Currency = fp.Product.Currency,
+                        Currency = fp.Product.Currency.GetDisplayName(),
                         IsActive = fp.Product.IsActive,
                         CreatedAt = fp.Product.CreatedAt,
                         UpdatedAt = fp.Product.UpdatedAt,

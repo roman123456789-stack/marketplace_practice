@@ -27,7 +27,7 @@ namespace marketplace_practice.Services
             string phoneNumber,
             string country,
             string postalCode,
-            Currency currency = Currency.RUB)
+            string currency = "RUB")
         {
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var buyerId))
@@ -109,7 +109,7 @@ namespace marketplace_practice.Services
                     {
                         CartItemId = cartItemInfo.CartItemId,
                         Quantity = cartItemQuantities[cartItemInfo.CartItemId],
-                        Currency = currency,
+                        Currency = currency.ParseFromDisplayName<Currency>(),
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     });
@@ -141,7 +141,7 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
-                                Currency = oi.CartItem.Product.Currency,
+                                Currency = oi.CartItem.Product.Currency.GetDisplayName(),
                                 ProductImages = oi.CartItem.Product.ProductImages
                                 .Select(pi => new ProductImageDto
                                 {
@@ -232,7 +232,7 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
-                                Currency = oi.CartItem.Product.Currency,
+                                Currency = oi.CartItem.Product.Currency.GetDisplayName(),
                                 ProductImages = oi.CartItem.Product.ProductImages
                                 .Select(pi => new ProductImageDto
                                 {
@@ -265,7 +265,7 @@ namespace marketplace_practice.Services
                                 ProviderName = o.Payment.ProviderName,
                                 ProviderPaymentId = o.Payment.ProviderPaymentId,
                                 Amount = o.Payment.Amount,
-                                Currency = o.Payment.Currency,
+                                Currency = o.Payment.Currency.GetDisplayName(),
                                 CreatedAt = o.Payment.CreatedAt
                             }
                             : null
@@ -361,7 +361,7 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
-                                Currency = oi.CartItem.Product.Currency,
+                                Currency = oi.CartItem.Product.Currency.GetDisplayName(),
                                 ProductImages = oi.CartItem.Product.ProductImages
                                     .Select(pi => new ProductImageDto
                                     {
@@ -394,7 +394,7 @@ namespace marketplace_practice.Services
                                 ProviderName = o.Payment.ProviderName,
                                 ProviderPaymentId = o.Payment.ProviderPaymentId,
                                 Amount = o.Payment.Amount,
-                                Currency = o.Payment.Currency,
+                                Currency = o.Payment.Currency.GetDisplayName(),
                                 CreatedAt = o.Payment.CreatedAt
                             }
                             : null

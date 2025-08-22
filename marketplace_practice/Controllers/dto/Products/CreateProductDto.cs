@@ -23,7 +23,7 @@ namespace marketplace_practice.Controllers.dto.Products
 
         [Required(ErrorMessage = "Поле 'Currency' не может быть пустым")]
         [RegularExpression("^(RUB|USD|EUR|CNY)$", ErrorMessage = "Неверный формат валюты (допустимо: RUB, USD, EUR, CNY))")]
-        public Currency Currency { get; set; }
+        public string Currency { get; set; } = "RUB";
 
         [Required(ErrorMessage = "Поле 'CategoryHierarchy' не может быть пустым")]
         public ICollection<CategoryHierarchyDto> CategoryHierarchy { get; set; }

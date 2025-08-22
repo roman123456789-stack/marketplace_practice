@@ -1,5 +1,4 @@
-﻿using marketplace_practice.Models.Enums;
-using marketplace_practice.Services.dto.Users;
+﻿using marketplace_practice.Services.dto.Users;
 
 namespace marketplace_practice.Services.dto.Products
 {
@@ -13,7 +12,7 @@ namespace marketplace_practice.Services.dto.Products
         public short? Size { get; set; }
         public int StockQuantity { get; set; }
         public required UserBriefInfoDto Owner { get; set; }
-        public Currency Currency { get; set; }
+        public required string Currency { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

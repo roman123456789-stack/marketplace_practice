@@ -27,7 +27,7 @@ namespace marketplace_practice.Services
             decimal price,
             decimal? promotionalPrice,
             short? size,
-            Currency currency,
+            string currency,
             ICollection<CategoryHierarchyDto> categoryHierarchies,
             ICollection<string>? imagesUrl,
             int stockQuantity = 0)
@@ -52,7 +52,7 @@ namespace marketplace_practice.Services
                     PromotionalPrice = promotionalPrice,
                     Size = size,
                     StockQuantity = stockQuantity,
-                    Currency = currency,
+                    Currency = currency.ParseFromDisplayName<Currency>(),
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
@@ -212,7 +212,7 @@ namespace marketplace_practice.Services
                         PromotionalPrice = p.PromotionalPrice,
                         Size = p.Size,
                         StockQuantity = p.StockQuantity,
-                        Currency = p.Currency,
+                        Currency = p.Currency.GetDisplayName(),
                         IsActive = p.IsActive,
                         CreatedAt = p.CreatedAt,
                         UpdatedAt = p.UpdatedAt,
@@ -301,7 +301,7 @@ namespace marketplace_practice.Services
                         PromotionalPrice = p.PromotionalPrice,
                         Size = p.Size,
                         StockQuantity = p.StockQuantity,
-                        Currency = p.Currency,
+                        Currency = p.Currency.GetDisplayName(),
                         IsActive = p.IsActive,
                         CreatedAt = p.CreatedAt,
                         UpdatedAt = p.UpdatedAt,
@@ -341,7 +341,7 @@ namespace marketplace_practice.Services
             decimal? price,
             decimal? promotionalPrice,
             short? size,
-            Currency? currency,
+            string? currency,
             ICollection<CategoryHierarchyDto>? categoryHierarchies,
             ICollection<string>? imagesUrl,
             int? stockQuantity)
@@ -387,7 +387,7 @@ namespace marketplace_practice.Services
                 if (!string.IsNullOrEmpty(name)) product.Name = name;
                 if (description != null) product.Description = description;
                 if (price.HasValue) product.Price = price.Value;
-                if (currency.HasValue) product.Currency = currency.Value;
+                if (!string.IsNullOrEmpty(currency)) product.Currency = currency.ParseFromDisplayName<Currency>();
                 if (promotionalPrice.HasValue) product.PromotionalPrice = promotionalPrice;
                 if (size.HasValue) product.Size = size.Value;
                 if (stockQuantity.HasValue) product.StockQuantity = stockQuantity.Value;
@@ -418,7 +418,7 @@ namespace marketplace_practice.Services
                     PromotionalPrice = product.PromotionalPrice,
                     Size = product.Size,
                     StockQuantity = product.StockQuantity,
-                    Currency = product.Currency,
+                    Currency = product.Currency.GetDisplayName(),
                     IsActive = product.IsActive,
                     CreatedAt = product.CreatedAt,
                     UpdatedAt = product.UpdatedAt,

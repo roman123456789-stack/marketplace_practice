@@ -19,7 +19,7 @@ namespace marketplace_practice.Controllers.dto.Products
         public short? Size { get; set; }
 
         [RegularExpression("^(RUB|USD|EUR|CNY)$", ErrorMessage = "Неверный формат валюты (допустимо: RUB, USD, EUR, CNY))")]
-        public Currency? Currency { get; set; }
+        public string? Currency { get; set; }
 
         public ICollection<CategoryHierarchyDto>? CategoryHierarchy { get; set; }
 

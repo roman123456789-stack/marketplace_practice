@@ -1,4 +1,5 @@
 ﻿using marketplace_practice.Models;
+using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto.Carts;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
@@ -19,8 +20,15 @@ namespace marketplace_practice.Services
 
         public async Task<Result<string>> AddCartItemAsync(
             ClaimsPrincipal userPrincipal,
-            string productId)
+            string productId,
+            int quantity = 1)
         {
+            // Валидация количества
+            if (quantity <= 0)
+            {
+                return Result<string>.Failure("Количество должно быть больше 0");
+            }
+
             // Валидация ID товара
             if (!long.TryParse(productId, out var id))
             {
@@ -34,10 +42,19 @@ namespace marketplace_practice.Services
                 return Result<string>.Failure("Не удалось идентифицировать пользователя");
             }
 
-            // Проверка существования товара
-            if (!await _appDbContext.Products.AnyAsync(p => p.Id == id))
+            // Проверка существования и доступности товара
+            var product = await _appDbContext.Products
+                .FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
+
+            if (product == null)
             {
-                return Result<string>.Failure("Указанный товар не существует");
+                return Result<string>.Failure("Указанный товар не существует или недоступен");
+            }
+
+            // Проверка достаточного количества на складе
+            if (product.StockQuantity < quantity)
+            {
+                return Result<string>.Failure($"Недостаточно товара на складе. Доступно: {product.StockQuantity}");
             }
 
             // Начало транзакции
@@ -59,7 +76,8 @@ namespace marketplace_practice.Services
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
-                    _appDbContext.Carts.Add(cart);
+                    await _appDbContext.Carts.AddAsync(cart);
+                    await _appDbContext.SaveChangesAsync(); // Сохраняем чтобы получить ID
                 }
 
                 // Поиск существующего товара в корзине
@@ -67,7 +85,20 @@ namespace marketplace_practice.Services
 
                 if (existingItem != null)
                 {
-                    return Result<string>.Failure("Данный товар уже в корзине");
+                    // Увеличение количества существующего товара
+                    var newQuantity = existingItem.Quantity + quantity;
+
+                    // Проверка, не превышает ли общее количество доступное на складе
+                    if (product.StockQuantity < newQuantity)
+                    {
+                        await transaction.RollbackAsync();
+                        return Result<string>.Failure(
+                            $"Нельзя добавить {quantity} шт. товара. " +
+                            $"В корзине уже {existingItem.Quantity} шт., доступно на складе: {product.StockQuantity}");
+                    }
+
+                    existingItem.Quantity = newQuantity;
+                    existingItem.UpdatedAt = DateTime.UtcNow;
                 }
                 else
                 {
@@ -75,15 +106,17 @@ namespace marketplace_practice.Services
                     cart.CartItems.Add(new CartItem
                     {
                         ProductId = id,
+                        Quantity = quantity,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     });
                 }
 
+                cart.UpdatedAt = DateTime.UtcNow;
                 await _appDbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Result<string>.Success(string.Empty);
+                return Result<string>.Success("Товар успешно добавлен в корзину");
             }
             catch
             {
@@ -135,13 +168,14 @@ namespace marketplace_practice.Services
                     .Select(ci => new CartItemDto
                     {
                         CartItemId = ci.Id.ToString(),
+                        Quantity = ci.Quantity,
                         productBriefInfo = new ProductBriefInfoDto
                         {
                             Id = ci.Product.Id,
                             UserId = ci.Product.UserId,
                             Name = ci.Product.Name,
                             Price = ci.Product.Price,
-                            Currency = ci.Product.Currency,
+                            Currency = ci.Product.Currency.GetDisplayName(),
                             ProductImages = ci.Product.ProductImages
                             .Select(pi => new ProductImageDto
                             {

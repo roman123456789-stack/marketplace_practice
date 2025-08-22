@@ -15,7 +15,7 @@ namespace marketplace_practice.Services.interfaces
             decimal price,
             decimal? promotionalPrice,
             short? size,
-            Currency currency,
+            string currency,
             ICollection<CategoryHierarchyDto> categoryHierarchies,
             ICollection<string>? imagesUrl,
             int stockQuantity = 0);
@@ -30,7 +30,7 @@ namespace marketplace_practice.Services.interfaces
             decimal? price,
             decimal? promotionalPrice,
             short? size,
-            Currency? currency,
+            string? currency,
             ICollection<CategoryHierarchyDto>? categoryHierarchies,
             ICollection<string>? imagesUrl,
             int? stockQuantity);
