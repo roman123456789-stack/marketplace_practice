@@ -223,7 +223,7 @@ namespace marketplace_practice.Controllers
                 };
 
                 // Генерируем и сохраняем PDF
-                var fileUrl = await _pdfService.SaveReceiptAsPdfAsync(receipt, "documents");
+                var fileUrl = await _pdfService.SaveReceiptAsPdfAsync(receipt, "receipts");
 
                 // Возвращаем JSON с ссылкой
                 return Ok(new
