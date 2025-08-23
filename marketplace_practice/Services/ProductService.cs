@@ -14,10 +14,12 @@ namespace marketplace_practice.Services
     public class ProductService : IProductService
     {
         private readonly AppDbContext _appDbContext;
+        private readonly IFileUploadService _fileUploadService;
 
-        public ProductService(AppDbContext appDbContext)
+        public ProductService(AppDbContext appDbContext, IFileUploadService fileUploadService)
         {
             _appDbContext = appDbContext;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<Result<ProductDto>> CreateProductAsync(
@@ -29,7 +31,7 @@ namespace marketplace_practice.Services
             short? size,
             string currency,
             ICollection<CategoryHierarchyDto> categoryHierarchies,
-            ICollection<string>? imagesUrl,
+            List<IFormFile>? images,
             int stockQuantity = 0)
         {
             // Получение пользователя
@@ -58,18 +60,6 @@ namespace marketplace_practice.Services
                     UpdatedAt = DateTime.UtcNow,
                     UserId = ownerId
                 };
-
-                // Обработка изображений
-                if (imagesUrl != null && imagesUrl.Any())
-                {
-                    product.ProductImages = imagesUrl.Select((url, index) => new ProductImage
-                    {
-                        Url = url,
-                        IsMain = index == 0,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    }).ToList();
-                }
 
                 // Обработка категорий
                 var processedCategories = new List<Category>();
@@ -132,6 +122,26 @@ namespace marketplace_practice.Services
                     return Result<ProductDto>.Failure("Товар не был добавлен ни в одну из категорий");
                 }
 
+                // Обработка изображений
+                if (images != null)
+                {
+                    if (images.Count > 10)
+                        return Result<ProductDto>.Failure("Может быть загружено не более 10 изображений");
+
+                    var urls = await _fileUploadService.SaveFilesAsync(images, "products");
+
+                    if (urls != null && urls.Any())
+                    {
+                        product.ProductImages = urls.Select((url, index) => new ProductImage
+                        {
+                            Url = url,
+                            IsMain = index == 0,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        }).ToList();
+                    }
+                }
+
                 await _appDbContext.Products.AddAsync(product);
                 await _appDbContext.SaveChangesAsync();
 
@@ -172,6 +182,11 @@ namespace marketplace_practice.Services
                     IsFavirite = false,
                     IsAdded = false
                 });
+            }
+            catch (ArgumentException ex)
+            {
+                await transaction.RollbackAsync();
+                return Result<ProductDto>.Failure(ex.Message);
             }
             catch
             {

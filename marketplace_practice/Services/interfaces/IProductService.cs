@@ -17,7 +17,7 @@ namespace marketplace_practice.Services.interfaces
             short? size,
             string currency,
             ICollection<CategoryHierarchyDto> categoryHierarchies,
-            ICollection<string>? imagesUrl,
+            List<IFormFile>? images,
             int stockQuantity = 0);
 
         public Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId);

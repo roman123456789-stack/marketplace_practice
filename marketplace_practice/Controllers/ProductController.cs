@@ -33,21 +33,44 @@ namespace marketplace_practice.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Create([FromBody] CreateProductDto createProductDto)
+        public async Task<IActionResult> Create([FromForm] CreateProductDto createProductDto)
         {
+            /*
+                                СПРАВКА ПО РАБОТЕ С ФОРМОЙ
+
+            0) Нужна роль "Admin" (можно искусственно ее добавить в таблице AspNetUserRoles)
+            1) Все поля я сделал строковыми, а потом валидировал и парсил вручную, потому что asp.net вообще не умеет работать с формами
+            2) В полях "Price", "PromotionalPrice", если значение дробное, то нужно писать его через запятую (НЕ точку!)
+            3) Поле "Currency" принимает только "RUB", "USD", "EUR", "CNY". Все в верхнем регистре, но могу и нижний добавить, если надо.
+            4) В поле "CategoryHierarchy" нужно указать путь в формате JSON (обязательно заключив в [квадратные скобки], т.к. это массив)
+            5) Поля "Description", "PromotionalPrice", "Images" - необязательные
+             */
+
             try
             {
+                var validationResult = createProductDto.ValidateForm();
+
+                if (!validationResult.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        Title = "Validation failed",
+                        Status = 400,
+                        Errors = validationResult.Errors
+                    });
+                }
+
                 var result = await _productService.CreateProductAsync(
                     User,
                     createProductDto.Name,
                     createProductDto.Description,
-                    createProductDto.Price,
-                    createProductDto.PromotionalPrice,
-                    createProductDto.Size,
-                    createProductDto.Currency,
-                    createProductDto.CategoryHierarchy,
-                    createProductDto.ImagesUrl,
-                    createProductDto.StockQuantity);
+                    createProductDto.GetPrice(),
+                    createProductDto.GetPromotionalPrice(),
+                    createProductDto.GetSize(),
+                    createProductDto.Currency!,
+                    createProductDto.GetCategoryHierarchy()!,
+                    createProductDto.Images,
+                    createProductDto.GetStockQuantity());
 
                 if (result.IsSuccess)
                 {
@@ -200,34 +223,34 @@ namespace marketplace_practice.Controllers
             }
         }
 
-        [HttpPost("upload")]
-        public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
-        {
-            if (images == null || images.Count == 0)
-                return BadRequest("No files uploaded.");
+        //[HttpPost("upload")]
+        //public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
+        //{
+        //    if (images == null || images.Count == 0)
+        //        return BadRequest("No files uploaded.");
 
-            // Опционально: ограничение количества
-            if (images.Count > 10)
-                return BadRequest("Maximum 10 files allowed.");
+        //    // Опционально: ограничение количества
+        //    if (images.Count > 10)
+        //        return BadRequest("Maximum 10 files allowed.");
 
-            try
-            {
-                var urls = await _fileUploadService.SaveFilesAsync(images, "products");
+        //    try
+        //    {
+        //        var urls = await _fileUploadService.SaveFilesAsync(images, "products");
 
-                return Ok(new
-                {
-                    urls,               
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "An error occurred while saving the files.");
-            }
-        }
+        //        return Ok(new
+        //        {
+        //            urls,               
+        //        });
+        //    }
+        //    catch (ArgumentException ex)
+        //    {
+        //        return BadRequest(ex.Message);
+        //    }
+        //    catch (Exception)
+        //    {
+        //        return StatusCode(500, "An error occurred while saving the files.");
+        //    }
+        //}
 
 
         private IActionResult HandleFailure(IEnumerable<string> errors)
