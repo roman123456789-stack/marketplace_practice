@@ -15,9 +15,9 @@ namespace marketplace_practice.Services.interfaces
             decimal price,
             decimal? promotionalPrice,
             short? size,
-            Currency currency,
+            string currency,
             ICollection<CategoryHierarchyDto> categoryHierarchies,
-            ICollection<string>? imagesUrl,
+            List<IFormFile>? images,
             int stockQuantity = 0);
 
         public Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId);
@@ -30,7 +30,7 @@ namespace marketplace_practice.Services.interfaces
             decimal? price,
             decimal? promotionalPrice,
             short? size,
-            Currency? currency,
+            string? currency,
             ICollection<CategoryHierarchyDto>? categoryHierarchies,
             ICollection<string>? imagesUrl,
             int? stockQuantity);

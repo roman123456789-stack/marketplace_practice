@@ -8,7 +8,8 @@ namespace marketplace_practice.Services.interfaces
     {
         public Task<Result<string>> AddCartItemAsync(
             ClaimsPrincipal userPrincipal,
-            string productId);
+            string productId,
+            int quantity);
 
         public Task<Result<ICollection<CartItemDto>>> GetCartAsync(
             ClaimsPrincipal userPrincipal,

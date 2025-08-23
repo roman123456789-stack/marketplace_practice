@@ -18,13 +18,20 @@ namespace marketplace_practice.Configurations
                 new Role
                 {
                     Id = 1,
-                    Name = "Admin",
-                    NormalizedName = "ADMIN",
-                    Description = "Администратор системы. Полный доступ."
+                    Name = "MainAdmin",
+                    NormalizedName = "MAINADMIN",
+                    Description = "Главный администратор системы. Полный доступ."
                 },
                 new Role
                 {
                     Id = 2,
+                    Name = "Admin",
+                    NormalizedName = "ADMIN",
+                    Description = "Администратор системы. Доступ к управлению ресурсами."
+                },
+                new Role
+                {
+                    Id = 3,
                     Name = "Buyer",
                     NormalizedName = "BUYER",
                     Description = "Покупатель. Базовые права на совершение покупок."

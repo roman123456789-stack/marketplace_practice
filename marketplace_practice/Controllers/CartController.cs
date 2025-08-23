@@ -28,11 +28,13 @@ namespace marketplace_practice.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> AddCartItem([FromQuery] string productId)
+        public async Task<IActionResult> AddCartItem(
+            [FromQuery] string productId, 
+            [FromQuery] int quantity = 1)
         {
             try
             {
-                var result = await _cartService.AddCartItemAsync(User, productId);
+                var result = await _cartService.AddCartItemAsync(User, productId, quantity);
 
                 if (result.IsSuccess)
                 {

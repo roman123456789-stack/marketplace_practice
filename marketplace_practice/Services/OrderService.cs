@@ -27,7 +27,7 @@ namespace marketplace_practice.Services
             string phoneNumber,
             string country,
             string postalCode,
-            Currency currency = Currency.RUB)
+            string currency = "RUB")
         {
             var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var buyerId))
@@ -109,7 +109,7 @@ namespace marketplace_practice.Services
                     {
                         CartItemId = cartItemInfo.CartItemId,
                         Quantity = cartItemQuantities[cartItemInfo.CartItemId],
-                        Currency = currency,
+                        Currency = currency.ParseFromDisplayName<Currency>(),
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     });
@@ -141,7 +141,13 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
-                                Currency = oi.CartItem.Product.Currency
+                                Currency = oi.CartItem.Product.Currency.GetDisplayName(),
+                                ProductImages = oi.CartItem.Product.ProductImages
+                                .Select(pi => new ProductImageDto
+                                {
+                                    Url = pi.Url,
+                                    IsMain = pi.IsMain
+                                }).ToList()
                             }
                         }).ToList(),
                         OrderDetail = new OrderDetailDto
@@ -226,7 +232,13 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
-                                Currency = oi.CartItem.Product.Currency
+                                Currency = oi.CartItem.Product.Currency.GetDisplayName(),
+                                ProductImages = oi.CartItem.Product.ProductImages
+                                .Select(pi => new ProductImageDto
+                                {
+                                    Url = pi.Url,
+                                    IsMain = pi.IsMain
+                                }).ToList()
                             }
                         }).ToList(),
                         OrderDetail = new OrderDetailDto
@@ -253,7 +265,7 @@ namespace marketplace_practice.Services
                                 ProviderName = o.Payment.ProviderName,
                                 ProviderPaymentId = o.Payment.ProviderPaymentId,
                                 Amount = o.Payment.Amount,
-                                Currency = o.Payment.Currency,
+                                Currency = o.Payment.Currency.GetDisplayName(),
                                 CreatedAt = o.Payment.CreatedAt
                             }
                             : null
@@ -344,21 +356,27 @@ namespace marketplace_practice.Services
                             CreatedAt = oi.CreatedAt,
                             UpdatedAt = oi.UpdatedAt,
                             Product = new ProductBriefInfoDto
-                                {
-                                    Id = oi.CartItem.Product.Id,
-                                    UserId = oi.CartItem.Product.UserId,
-                                    Name = oi.CartItem.Product.Name,
-                                    Price = oi.CartItem.Product.Price,
-                                    Currency = oi.CartItem.Product.Currency
-                                }
+                            {
+                                Id = oi.CartItem.Product.Id,
+                                UserId = oi.CartItem.Product.UserId,
+                                Name = oi.CartItem.Product.Name,
+                                Price = oi.CartItem.Product.Price,
+                                Currency = oi.CartItem.Product.Currency.GetDisplayName(),
+                                ProductImages = oi.CartItem.Product.ProductImages
+                                    .Select(pi => new ProductImageDto
+                                    {
+                                        Url = pi.Url,
+                                        IsMain = pi.IsMain
+                                    }).ToList()
+                            }
                         }).ToList(),
                         OrderDetail = new OrderDetailDto
-                            {
-                                FullName = o.OrderDetail.FullName,
-                                PhoneNumber = o.OrderDetail.PhoneNumber,
-                                Country = o.OrderDetail.Country,
-                                PostalCode = o.OrderDetail.PostalCode
-                            },
+                        {
+                            FullName = o.OrderDetail.FullName,
+                            PhoneNumber = o.OrderDetail.PhoneNumber,
+                            Country = o.OrderDetail.Country,
+                            PostalCode = o.OrderDetail.PostalCode
+                        },
                         LoyaltyTransaction = o.LoyaltyTransaction != null
                             ? new LoyaltyTransactionDto
                             {
@@ -376,7 +394,7 @@ namespace marketplace_practice.Services
                                 ProviderName = o.Payment.ProviderName,
                                 ProviderPaymentId = o.Payment.ProviderPaymentId,
                                 Amount = o.Payment.Amount,
-                                Currency = o.Payment.Currency,
+                                Currency = o.Payment.Currency.GetDisplayName(),
                                 CreatedAt = o.Payment.CreatedAt
                             }
                             : null
@@ -401,7 +419,6 @@ namespace marketplace_practice.Services
         public async Task<Result<OrderDto>> UpdateOrderAsync(
             ClaimsPrincipal userPrincipal,
             string orderId,
-            OrderStatus? status,
             Dictionary<long, int>? updatedCartItems,
             string? fullName,
             string? phoneNumber,
@@ -435,14 +452,12 @@ namespace marketplace_practice.Services
                 if (order.UserId != currentUserId)
                     return Result<OrderDto>.Failure("Отказано в доступе");
 
-                // Обновление статуса
-                if (status.HasValue)
+                // Проверка возможности изменения заказа в зависимости от статуса
+                if (!CanOrderBeModified(order.Status))
                 {
-                    if (status == OrderStatus.Completed && (order.Payment == null || order.Status != OrderStatus.Completed))
-                        return Result<OrderDto>.Failure("Нельзя завершить неоплаченный заказ");
-
-                    order.Status = status.Value;
-                    order.UpdatedAt = DateTime.UtcNow;
+                    return Result<OrderDto>
+                        .Failure($"Невозможно изменить заказ со статусом '{order.Status.GetDisplayName()}'. " +
+                            "Разрешено изменять только заказы со статусами: Новый, В обработке.");
                 }
 
                 // Обновление деталей доставки
@@ -468,6 +483,11 @@ namespace marketplace_practice.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private bool CanOrderBeModified(OrderStatus status)
+        {
+            return status == OrderStatus.New || status == OrderStatus.Processing;
         }
 
         private async Task UpdateOrderItemsAsync(Order order, Dictionary<long, int> updatedCartItems)

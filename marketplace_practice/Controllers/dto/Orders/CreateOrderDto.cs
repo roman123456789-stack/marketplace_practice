@@ -1,5 +1,4 @@
-﻿using marketplace_practice.Models.Enums;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace marketplace_practice.Controllers.dto.Orders
 {
@@ -9,7 +8,7 @@ namespace marketplace_practice.Controllers.dto.Orders
         public Dictionary<long, int> CartItemQuantities { get; set; }
 
         [RegularExpression("^(RUB|USD|EUR|CNY)$", ErrorMessage = "Неверный формат валюты (допустимо: RUB, USD, EUR, CNY))")]
-        public Currency Currency { get; set; } = Currency.RUB;
+        public string Currency { get; set; } = "RUB";
 
 
         //[Required(ErrorMessage = "Поле 'Type' не может быть пустым")]

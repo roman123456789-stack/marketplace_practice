@@ -19,11 +19,8 @@ namespace marketplace_practice.Services
             return $"/uploads/{subPath}/{Path.GetFileName(filePath)}";
         }
 
-        public async Task<List<string>> SaveFilesAsync(List<IFormFile> files, string subPath)
+        public async Task<ICollection<string>> SaveFilesAsync(List<IFormFile> files, string subPath)
         {
-            if (files == null || files.Count == 0)
-                throw new ArgumentException("No files provided.");
-
             var urls = new List<string>();
 
             foreach (var file in files)
@@ -50,13 +47,13 @@ namespace marketplace_practice.Services
         private void ValidateFile(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                throw new ArgumentException("File is null or empty.");
+                throw new ArgumentException("Файл не может быть пустым");
 
             if (!_allowedImageTypes.Contains(file.ContentType))
-                throw new ArgumentException("Invalid file type. Only images are allowed.");
+                throw new ArgumentException("Недопустимый тип файла (разрешены только изображения)");
 
             if (file.Length > 100 * 1024 * 1024) // 100 MB
-                throw new ArgumentException("File is too large. Maximum size is 100 MB.");
+                throw new ArgumentException("Размер файла слишком большой (максимальный размер - 100 MB)");
         }
 
         // Сохраняет и возвращает полный путь на диске

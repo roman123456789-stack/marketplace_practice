@@ -11,9 +11,11 @@ namespace marketplace_practice.Configurations
             builder.ToTable("product_images");
             builder.HasKey(pi => pi.Id);
             builder.Property(pi => pi.Id).HasColumnName("id");
-            builder.Property(pi => pi.ProductId).HasColumnName("product_id");
+            builder.Property(pi => pi.ProductId).HasColumnName("product_id").IsRequired();
+            builder.Property(pi => pi.PriorityId).HasColumnName("priority_id").IsRequired();
             builder.Property(pi => pi.Url).HasColumnName("url").HasMaxLength(300).IsRequired();
             builder.Property(pi => pi.IsMain).HasColumnName("is_main").IsRequired();
+            builder.Property(pi => pi.IsActive).HasColumnName("is_active").IsRequired();
             builder.Property(pi => pi.CreatedAt).HasColumnName("created_at").IsRequired();
             builder.Property(pi => pi.UpdatedAt).HasColumnName("updated_at");
 

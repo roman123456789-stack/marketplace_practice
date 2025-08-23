@@ -1,4 +1,5 @@
 ﻿using marketplace_practice.Models;
+using marketplace_practice.Models.Enums;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
@@ -115,11 +116,17 @@ namespace marketplace_practice.Services
                             Email = fp.User.Email!,
                             PhoneNumber = fp.User.PhoneNumber
                         },
-                        Currency = fp.Product.Currency,
+                        Currency = fp.Product.Currency.GetDisplayName(),
                         IsActive = fp.Product.IsActive,
                         CreatedAt = fp.Product.CreatedAt,
                         UpdatedAt = fp.Product.UpdatedAt,
-                        ProductImages = new List<ProductImageDto>(),
+                        ProductImages = fp.Product.ProductImages
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList(),
                         IsFavirite = true,
                         IsAdded = fp.User.Cart.CartItems.Any(ci => ci.ProductId == fp.ProductId)
                     })
@@ -152,7 +159,7 @@ namespace marketplace_practice.Services
             try
             {
                 // Поиск закладки
-                var favoriteProduct = _appDbContext.FavoriteProducts.FirstOrDefault(fp => fp.Id == id);
+                var favoriteProduct = _appDbContext.FavoriteProducts.FirstOrDefault(fp => fp.ProductId == id);
 
                 if (favoriteProduct == null)
                 {

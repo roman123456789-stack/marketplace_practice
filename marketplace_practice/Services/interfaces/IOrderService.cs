@@ -14,7 +14,7 @@ namespace marketplace_practice.Services.interfaces
             string phoneNumber,
             string country,
             string postalCode,
-            Currency currency = Currency.RUB);
+            string currency = "RUB");
 
         public Task<Result<OrderDto>> GetOrderByIdAsync(ClaimsPrincipal userPrincipal, string orderId);
 
@@ -25,7 +25,6 @@ namespace marketplace_practice.Services.interfaces
         public Task<Result<OrderDto>> UpdateOrderAsync(
             ClaimsPrincipal userPrincipal,
             string orderId,
-            OrderStatus? status,
             Dictionary<long, int>? updatedCartItems,
             string? fullName,
             string? phoneNumber,
