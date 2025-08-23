@@ -3,6 +3,7 @@ using marketplace_practice.Middlewares;
 using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
+using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,12 +18,13 @@ namespace marketplace_practice.Controllers
         private readonly IProductService _productService;
         private readonly ILogger<ProductController> _logger;
         private readonly IFileUploadService _fileUploadService;
-
-        public ProductController(IProductService productsService, ILogger<ProductController> logger, IFileUploadService fileUploadService)
+        private readonly IPDFService _pdfService;
+        public ProductController(IProductService productsService, ILogger<ProductController> logger, IFileUploadService fileUploadService, IPDFService pdfService)
         {
             _productService = productsService;
             _logger = logger;
             _fileUploadService = fileUploadService;
+            _pdfService = pdfService;
         }
 
         [HttpPost]
@@ -199,6 +201,42 @@ namespace marketplace_practice.Controllers
             }
         }
 
+
+        // Тестовые эндпониты
+        [HttpGet("generate")]
+        public async Task<IActionResult> GeneratePdf()
+        {
+            try
+            {
+                // Создаём тестовые данные
+                var receipt = new ReceiptModel
+                {
+                    ReceiptNumber = "INV-2025-001",
+                    StoreName = "Marketplace Practice",
+                    CustomerName = "Иван Иванов",
+                    IssueDate = DateTime.Now,
+                    Items = new List<ReceiptItem>
+            {
+                new() { ProductName = "Ноутбук", Quantity = 1, UnitPrice = 59990 },
+                new() { ProductName = "Мышь", Quantity = 2, UnitPrice = 1500 }
+            }
+                };
+
+                // Генерируем и сохраняем PDF
+                var fileUrl = await _pdfService.SaveReceiptAsPdfAsync(receipt, "documents");
+
+                // Возвращаем JSON с ссылкой
+                return Ok(new
+                {
+                    message = "PDF успешно сгенерирован",
+                    url = fileUrl  // Например: /uploads/documents/abc123.pdf
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Ошибка генерации PDF", details = ex.Message });
+            }
+        }
         [HttpPost("upload")]
         public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
         {

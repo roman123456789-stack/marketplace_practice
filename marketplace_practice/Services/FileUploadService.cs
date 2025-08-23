@@ -8,7 +8,7 @@ namespace marketplace_practice.Services
 
         private readonly string[] _allowedImageTypes =
         {
-            "image/jpeg", "image/png", "image/webp", "image/gif"
+            "image/jpeg", "image/png", "image/webp", "image/gif",  "application/pdf",
         };
 
         public async Task<string> SaveFileAsync(IFormFile file, string subPath)

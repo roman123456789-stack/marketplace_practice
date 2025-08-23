@@ -10,11 +10,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using QuestPDF.Infrastructure;
 using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
-
+QuestPDF.Settings.License = LicenseType.Community;
 builder.Services.AddControllers()
 .AddJsonOptions(options =>
 {
@@ -35,6 +36,7 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IFavoriteProductService, FavoriteProductService>();
 builder.Services.AddScoped<IFeaturedProductsService, FeaturedProductsService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+builder.Services.AddScoped<IPDFService, PDFService>();
 builder.Services.AddEndpointsApiExplorer();
 
 // ÄËß ËÎÊÀËÜÍÎÃÎ ÇÀÏÓÑÊÀ
