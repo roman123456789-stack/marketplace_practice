@@ -262,6 +262,7 @@ namespace marketplace_practice.Services
                             ? new PaymentDto
                             {
                                 Id = o.Payment.Id,
+                                OrderId = o.Payment.OrderId,
                                 ProviderName = o.Payment.ProviderName,
                                 ProviderPaymentId = o.Payment.ProviderPaymentId,
                                 Amount = o.Payment.Amount,
@@ -391,6 +392,7 @@ namespace marketplace_practice.Services
                             ? new PaymentDto
                             {
                                 Id = o.Payment.Id,
+                                OrderId = o.Payment.OrderId,
                                 ProviderName = o.Payment.ProviderName,
                                 ProviderPaymentId = o.Payment.ProviderPaymentId,
                                 Amount = o.Payment.Amount,

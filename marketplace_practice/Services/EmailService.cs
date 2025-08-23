@@ -9,14 +9,11 @@ namespace marketplace_practice.Services
     public class EmailService : IEmailService
     {
         private readonly EmailConfiguration _emailConfig;
-        private readonly IWebHostEnvironment _env;
 
         public EmailService(
-            IOptions<EmailConfiguration> emailConfig,
-            IWebHostEnvironment env)
+            IOptions<EmailConfiguration> emailConfig)
         {
             _emailConfig = emailConfig.Value;
-            _env = env;
         }
 
         public async Task SendEmailConfirmationAsync(string email, string firstName, long userId, string token)
@@ -79,6 +76,27 @@ namespace marketplace_practice.Services
             await SendEmailAsync(message);
         }
 
+        public async Task SendPdfReceiptAsync(string email, string firstName, byte[] pdfBytes, string fileName, string subject = "Ваш чек")
+        {
+            if (pdfBytes == null || pdfBytes.Length == 0)
+            {
+                throw new ArgumentException("PDF bytes cannot be null or empty", nameof(pdfBytes));
+            }
+
+            var message = new EmailMessage
+            {
+                To = new List<string> { email },
+                Subject = subject,
+                Body = $@"
+                    <h1>Уважаемый(ая) {firstName}!</h1>
+                    <p>Ваш чек готов и прикреплен к этому письму.</p>
+                    <p>Спасибо за покупку!</p>
+                    <p>С уважением,<br>Команда {_emailConfig.FromName}</p>"
+            };
+
+            await SendEmailWithAttachmentAsync(message, pdfBytes, fileName, "application/pdf");
+        }
+
         public async Task SendEmailAsync(EmailMessage message)
         {
             var emailMessage = CreateEmailMessage(message);
@@ -116,6 +134,31 @@ namespace marketplace_practice.Services
             {
                 await client.DisconnectAsync(true);
             }
+        }
+
+        public async Task SendEmailWithAttachmentAsync(EmailMessage message, byte[] attachmentData, string fileName, string contentType)
+        {
+            var emailMessage = CreateEmailMessageWithAttachment(message, attachmentData, fileName, contentType);
+            await SendAsync(emailMessage);
+        }
+
+        private MimeMessage CreateEmailMessageWithAttachment(EmailMessage message, byte[] attachmentData, string fileName, string contentType)
+        {
+            var emailMessage = new MimeMessage();
+            emailMessage.From.Add(new MailboxAddress(_emailConfig.FromName, _emailConfig.FromAddress));
+            emailMessage.To.AddRange(message.To.Select(x => new MailboxAddress(x, x)));
+            emailMessage.Subject = message.Subject;
+
+            var bodyBuilder = new BodyBuilder
+            {
+                HtmlBody = message.Body
+            };
+
+            // Добавляем вложение
+            bodyBuilder.Attachments.Add(fileName, attachmentData, ContentType.Parse(contentType));
+
+            emailMessage.Body = bodyBuilder.ToMessageBody();
+            return emailMessage;
         }
     }
 }

@@ -240,10 +240,10 @@ namespace marketplace_practice.Controllers
                     CustomerName = "Иван Иванов",
                     IssueDate = DateTime.Now,
                     Items = new List<ReceiptItem>
-            {
-                new() { ProductName = "Ноутбук", Quantity = 1, UnitPrice = 59990 },
-                new() { ProductName = "Мышь", Quantity = 2, UnitPrice = 1500 }
-            }
+                    {
+                        new() { ProductName = "Ноутбук", Quantity = 1, UnitPrice = 59990 },
+                        new() { ProductName = "Мышь", Quantity = 2, UnitPrice = 1500 }
+                    }
                 };
 
                 // Генерируем и сохраняем PDF

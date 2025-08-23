@@ -39,6 +39,7 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IPDFService, PDFService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddEndpointsApiExplorer();
 
 // ÄËß ËÎÊÀËÜÍÎÃÎ ÇÀÏÓÑÊÀ

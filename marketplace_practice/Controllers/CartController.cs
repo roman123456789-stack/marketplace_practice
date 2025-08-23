@@ -70,14 +70,7 @@ namespace marketplace_practice.Controllers
 
                 if (result.IsSuccess)
                 {
-                    return Ok(new
-                    {
-                        Cart = result.Value?.Select(ci => new
-                        {
-                            CartItemId = ci.CartItemId,
-                            Product = ci.productBriefInfo
-                        })
-                    });
+                    return Ok(new { result.Value });
                 }
 
                 return HandleFailure(result.Errors);

@@ -72,7 +72,7 @@ namespace marketplace_practice.Services
                     // Проход по всей иерархии, чтобы найти конечную категорию
                     while (currentLevel != null)
                     {
-                        // Gjbcr существующей категории
+                        // Поиск существующей категории
                         var category = await _appDbContext.Categories
                             .FirstOrDefaultAsync(c => c.Name == currentLevel.Name &&
                                                    c.ParentCategoryId == (parentCategory != null ? parentCategory.Id : (short?)null) &&

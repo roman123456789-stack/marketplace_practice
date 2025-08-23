@@ -32,6 +32,10 @@ namespace marketplace_practice.Services
             if (receipt.Items == null)
                 throw new InvalidOperationException("Receipt.Items is null");
 
+            // Конвертируем UTC время в московское время
+            var moscowTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time");
+            var localIssueDate = TimeZoneInfo.ConvertTimeFromUtc(receipt.IssueDate, moscowTimeZone);
+
             container
                 .Page(page =>
                 {
@@ -49,7 +53,7 @@ namespace marketplace_practice.Services
                         .FontSize(16)
                         .SemiBold();
 
-                        column.Item().Text($"Дата: {receipt.IssueDate:dd.MM.yyyy HH:mm}")
+                        column.Item().Text($"Дата: {localIssueDate:dd.MM.yyyy HH:mm} (МСК)")
                             .FontSize(12).AlignCenter();
 
                         column.Item().PaddingVertical(10).Text($"Покупатель: {receipt.CustomerName}")
@@ -119,7 +123,7 @@ namespace marketplace_practice.Services
             }).GeneratePdf();
         }
 
-        public async Task<string> SaveReceiptAsPdfAsync(ReceiptModel model, string subPath = "receipts")
+        public async Task<(string, byte[])> SaveReceiptAsPdfAsync(ReceiptModel model, string subPath = "receipts")
         {
             WithReceipt(model);
 
@@ -140,7 +144,9 @@ namespace marketplace_practice.Services
                     ContentType = "application/pdf"
                 };
 
-                return await _fileUploadService.SaveFileAsync(formFile, subPath);
+                var fileUrl = await _fileUploadService.SaveFileAsync(formFile, subPath);
+
+                return (fileUrl, bytes);
             }
             finally
             {
