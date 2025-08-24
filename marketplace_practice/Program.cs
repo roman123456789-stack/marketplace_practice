@@ -23,6 +23,12 @@ builder.Services.AddControllers()
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
+builder.Services.AddCors(options => options.AddPolicy("CorsPolicy",
+    builder =>
+    {
+        builder.WithOrigins("http://localhost:5173");
+    }));
+
 builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfig"));
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -163,6 +169,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseCors("CorsPolicy");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
