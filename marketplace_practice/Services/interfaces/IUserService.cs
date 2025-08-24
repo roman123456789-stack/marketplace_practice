@@ -12,7 +12,7 @@ namespace marketplace_practice.Services.interfaces
             string? firstName,
             string? lastName);
 
-        public Task<Result<UserDto>> GetUserByIdAsync(ClaimsPrincipal userPrincipal, string userId);
+        public Task<Result<UserDto>> GetUserAsync(ClaimsPrincipal userPrincipal, string? targetUserId = null);
 
         public Task<Result<UserDto>> UpdateUserAsync(
             ClaimsPrincipal userPrincipal,

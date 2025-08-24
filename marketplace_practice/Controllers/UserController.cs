@@ -56,18 +56,18 @@ namespace marketplace_practice.Controllers
             }
         }
 
-        [HttpGet("{userId}")]
+        [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Get([FromRoute] string userId)
+        public async Task<IActionResult> Get([FromQuery] string? userId = null)
         {
             try
             {
-                var result = await _userService.GetUserByIdAsync(User, userId);
+                var result = await _userService.GetUserAsync(User, userId);
 
                 if (result.IsSuccess)
                 {

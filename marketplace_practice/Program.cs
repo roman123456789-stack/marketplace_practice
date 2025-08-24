@@ -1,4 +1,4 @@
-using marketplace_practice;
+п»їusing marketplace_practice;
 using marketplace_practice.Middlewares;
 using marketplace_practice.Models;
 using marketplace_practice.Services;
@@ -8,9 +8,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -26,7 +28,10 @@ builder.Services.AddControllers()
 builder.Services.AddCors(options => options.AddPolicy("CorsPolicy",
     builder =>
     {
-        builder.WithOrigins("http://localhost:5173");
+        builder.WithOrigins("http://localhost:5173")
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+               .AllowCredentials();
     }));
 
 builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection("Jwt"));
@@ -48,13 +53,13 @@ builder.Services.AddScoped<IPDFService, PDFService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddEndpointsApiExplorer();
 
-// ДЛЯ ЛОКАЛЬНОГО ЗАПУСКА
+// Р”Р›РЇ Р›РћРљРђР›Р¬РќРћР“Рћ Р—РђРџРЈРЎРљРђ
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-// ДЛЯ ЗАПУСКА В DOCKER
+// Р”Р›РЇ Р—РђРџРЈРЎРљРђ Р’ DOCKER
 //builder.Services.AddDbContext<AppDbContext>(options =>
 //{
 //    options.UseNpgsql(builder.Configuration.GetConnectionString(
@@ -66,15 +71,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddIdentity<User, marketplace_practice.Models.Role>(options =>
 {
-    // Настройки пароля потом нужно изменить
-    options.Password.RequiredLength = 8; // Минимальная длина
-    options.Password.RequireDigit = false; // Требуется хотя бы одна цифра
-    options.Password.RequireLowercase = false; // Требуется строчная буква
-    options.Password.RequireUppercase = false; // Требуется заглавная буква
-    options.Password.RequireNonAlphanumeric = false; // Требуется спецсимвол
-    options.Password.RequiredUniqueChars = 1; // Уникальные символы
+    // РќР°СЃС‚СЂРѕР№РєРё РїР°СЂРѕР»СЏ РїРѕС‚РѕРј РЅСѓР¶РЅРѕ РёР·РјРµРЅРёС‚СЊ
+    options.Password.RequiredLength = 8; // РњРёРЅРёРјР°Р»СЊРЅР°СЏ РґР»РёРЅР°
+    options.Password.RequireDigit = false; // РўСЂРµР±СѓРµС‚СЃСЏ С…РѕС‚СЏ Р±С‹ РѕРґРЅР° С†РёС„СЂР°
+    options.Password.RequireLowercase = false; // РўСЂРµР±СѓРµС‚СЃСЏ СЃС‚СЂРѕС‡РЅР°СЏ Р±СѓРєРІР°
+    options.Password.RequireUppercase = false; // РўСЂРµР±СѓРµС‚СЃСЏ Р·Р°РіР»Р°РІРЅР°СЏ Р±СѓРєРІР°
+    options.Password.RequireNonAlphanumeric = false; // РўСЂРµР±СѓРµС‚СЃСЏ СЃРїРµС†СЃРёРјРІРѕР»
+    options.Password.RequiredUniqueChars = 1; // РЈРЅРёРєР°Р»СЊРЅС‹Рµ СЃРёРјРІРѕР»С‹
 
-    options.User.RequireUniqueEmail = true; // Уникальный email
+    options.User.RequireUniqueEmail = true; // РЈРЅРёРєР°Р»СЊРЅС‹Р№ email
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
@@ -90,13 +95,18 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("Catalog", new OpenApiInfo { Title = "Catalog API", Version = "v1" });
     c.SwaggerDoc("Default", new OpenApiInfo { Title = "Default API", Version = "v1" });
 
-    // Добавляем поддержку JWT в Swagger
+    // Р’РєР»СЋС‡РµРЅРёРµ XML-РґРѕРєСѓРјРµРЅС‚Р°С†РёРё
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+
+    // Р”РѕР±Р°РІР»СЏРµРј РїРѕРґРґРµСЂР¶РєСѓ JWT РІ Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Введите JWT-токен",
+        Description = "Р’РІРµРґРёС‚Рµ JWT-С‚РѕРєРµРЅ",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http, // или ApiKey
+        Type = SecuritySchemeType.Http, // РёР»Рё ApiKey
         Scheme = "Bearer",
         BearerFormat = "JWT"
     });
@@ -117,7 +127,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Добавляем аутентификацию и авторизацию
+// Р”РѕР±Р°РІР»СЏРµРј Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЋ Рё Р°РІС‚РѕСЂРёР·Р°С†РёСЋ
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = "JwtRefreshToken";

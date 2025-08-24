@@ -103,26 +103,49 @@ namespace marketplace_practice.Services
             }
         }
 
-        public async Task<Result<UserDto>> GetUserByIdAsync(ClaimsPrincipal userPrincipal, string userId)
+        public async Task<Result<UserDto>> GetUserAsync(ClaimsPrincipal userPrincipal, string? targetUserId = null)
         {
+            // Получение пользователя из ClaimsPrincipal
+            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || !long.TryParse(userId, out var currentUserId))
+            {
+                return Result<UserDto>.Failure("Не удалось идентифицировать пользователя");
+            }
+
+            // Определение ID целевого пользователя
+            long? resolvedUserId = null;
+
+            if (!string.IsNullOrEmpty(targetUserId))
+            {
+                // Проверка прав администратора
+                if (userId != targetUserId && !userPrincipal.IsInRole("MainAdmin"))
+                {
+                    return Result<UserDto>.Failure("Недостаточно прав для выполнения действия");
+                }
+
+                // Преобразование строки в long
+                if (!long.TryParse(targetUserId, out var parsedUserId))
+                {
+                    return Result<UserDto>.Failure("Некорректный формат ID пользователя");
+                }
+                resolvedUserId = parsedUserId;
+            }
+            else
+            {
+                resolvedUserId = currentUserId;
+            }
+
             try
             {
                 // Поиск пользователя
                 var user = await _appDbContext.Users
                     .AsNoTracking()
                     .Include(u => u.LoyaltyAccount)
-                    .FirstOrDefaultAsync(u => u.Id == long.Parse(userId));
+                    .FirstOrDefaultAsync(u => u.Id == resolvedUserId);
 
                 if (user == null)
                 {
                     return Result<UserDto>.Failure("Пользователь не найден");
-                }
-
-                // Проверка подлинности и прав
-                var isVerified = await VerifyAccessRights(userPrincipal, user);
-                if (!isVerified)
-                {
-                    return Result<UserDto>.Failure("Недостаточно прав для выполнения действия");
                 }
 
                 // Загрузка ролей
