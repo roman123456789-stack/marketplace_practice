@@ -21,6 +21,9 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Выдача роли администратора конкретному пользователю
+        /// </summary>
         [HttpGet("giveAdminRole")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

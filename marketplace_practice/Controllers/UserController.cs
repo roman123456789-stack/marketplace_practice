@@ -22,6 +22,9 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Регистрация пользователя
+        /// </summary>
         [HttpPost]
         [AllowAnonymous]
         [ValidateModel]
@@ -56,6 +59,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение данных пользователя
+        /// </summary>
         [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
@@ -83,6 +89,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Обновление данных пользователя
+        /// </summary>
         [HttpPatch("{userId}")]
         [Authorize]
         [ValidateModel]
@@ -122,6 +131,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Удаление пользователя
+        /// </summary>
         [HttpDelete("{userId}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

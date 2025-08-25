@@ -17,6 +17,6 @@ namespace marketplace_practice.Services.interfaces
 
         public Task<Result<string>> DeleteCartItemAsync(
             ClaimsPrincipal userPrincipal,
-            string cartItemId);
+            string productId);
     }
 }

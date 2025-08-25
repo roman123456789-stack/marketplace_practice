@@ -51,6 +51,8 @@ builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IPDFService, PDFService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<ICartCookieService, CartCookieService>();
+builder.Services.AddScoped<IFavoriteCookieService, FavoriteCookieService>();
 builder.Services.AddEndpointsApiExplorer();
 
 // ДЛЯ ЛОКАЛЬНОГО ЗАПУСКА

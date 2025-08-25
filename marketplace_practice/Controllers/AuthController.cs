@@ -1,5 +1,7 @@
 ﻿using marketplace_practice.Controllers.dto.Auth;
 using marketplace_practice.Middlewares;
+using marketplace_practice.Models;
+using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Auth;
 using marketplace_practice.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -15,14 +17,25 @@ namespace marketplace_practice.Controllers
     public class AuthController : Controller
     {
         private readonly IAuthService _authService;
+        private readonly ICartCookieService _cartCookieService;
+        private readonly IFavoriteCookieService _favoriteCookieService;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, ILogger<AuthController> logger)
+        public AuthController(
+            IAuthService authService, 
+            ICartCookieService cartCookieService,
+            IFavoriteCookieService favoriteCookieService,
+            ILogger<AuthController> logger)
         {
             _authService = authService;
+            _cartCookieService = cartCookieService;
+            _favoriteCookieService = favoriteCookieService;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Подтверждение электронной почты пользователя
+        /// </summary>
         [HttpGet("confirm-email-and-sign-in")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
@@ -55,8 +68,35 @@ namespace marketplace_practice.Controllers
                             Path = "/"
                         });
 
-                    _logger.LogInformation("Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему", userId);
-                    return Ok(new { AccessToken = result.Value.AccessToken.Value });
+                    var transferCartResult = await _cartCookieService.TransferCartToUserAsync(HttpContext, User);
+                    var transferFavoritesResult = await _favoriteCookieService.TransferFavoritesToUserAsync(HttpContext, User);
+
+                    var warnings = new List<string>();
+
+                    if (!transferCartResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему, "
+                            + "но не удалось перенести товары в корзину: {Errors}",
+                            userId, string.Join(", ", transferCartResult.Errors));
+                        warnings.Add("Не удалось перенести товары в корзину");
+                    }
+
+                    if (!transferFavoritesResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему, "
+                            + "но не удалось перенести товары в избранное: {Errors}",
+                            userId, string.Join(", ", transferFavoritesResult.Errors));
+                        warnings.Add("Не удалось перенести товары в избранное");
+                    }
+
+                    return Ok(new
+                    {
+                        AccessToken = result.Value.AccessToken.Value,
+                        Message = warnings.Any()
+                            ? "Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему, но возникли проблемы с переносом данных"
+                            : $"Email подтверждён и пользователь с ID = '{userId}' успешно вошёл в систему",
+                        Warnings = warnings
+                    });
                 }
 
                 _logger.LogWarning("Ошибка подтверждения email пользователя с ID = '{UserId}': {Errors}",
@@ -77,6 +117,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Вход в личный кабинет пользователя
+        /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
         [ValidateModel]
@@ -104,8 +147,35 @@ namespace marketplace_practice.Controllers
                             Path = "/"
                         });
 
-                    _logger.LogInformation("Пользователь '{UserName}' успешно вошёл в систему", loginDto.Email);
-                    return Ok(new { AccessToken = result.Value.AccessToken.Value });
+                    var transferCartResult = await _cartCookieService.TransferCartToUserAsync(HttpContext, User);
+                    var transferFavoritesResult = await _favoriteCookieService.TransferFavoritesToUserAsync(HttpContext, User);
+
+                    var warnings = new List<string>();
+
+                    if (!transferCartResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Пользователь '{UserName}' успешно вошёл в систему, "
+                            + "но не удалось перенести товары в корзину: {Errors}",
+                            loginDto.Email, string.Join(", ", transferCartResult.Errors));
+                        warnings.Add("Не удалось перенести товары в корзину");
+                    }
+
+                    if (!transferFavoritesResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Пользователь '{UserName}' успешно вошёл в систему, "
+                            + "но не удалось перенести товары в избранное: {Errors}",
+                            loginDto.Email, string.Join(", ", transferFavoritesResult.Errors));
+                        warnings.Add("Не удалось перенести товары в избранное");
+                    }
+
+                    return Ok(new
+                    {
+                        AccessToken = result.Value.AccessToken.Value,
+                        Message = warnings.Any()
+                            ? "Вход выполнен, но возникли проблемы с переносом данных"
+                            : $"Пользователь '{loginDto.Email}' успешно вошёл в систему",
+                        Warnings = warnings
+                    });
                 }
 
                 _logger.LogWarning("Ошибка при входе пользователя '{UserName}' в систему: {Errors}",
@@ -174,6 +244,9 @@ namespace marketplace_practice.Controllers
         //    }
         //}
 
+        /// <summary>
+        /// Выход пользователя из личного кабинета
+        /// </summary>
         [HttpPost("logout")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -217,6 +290,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Запрос на сброс пароля с отправкой ссылки на почту
+        /// </summary>
         [HttpPost("recovery")]
         [AllowAnonymous]
         [ValidateModel]
@@ -259,6 +335,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Сброс старого пароля и установка нового
+        /// </summary>
         [HttpPost("reset-password")]
         [AllowAnonymous]
         [ValidateModel]
@@ -298,6 +377,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Запрос на обновление электронной почты пользователя
+        /// </summary>
         [HttpPost("change-email")]
         [Authorize]
         [ValidateModel]
@@ -344,6 +426,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Подтверждение новой электронной почты
+        /// </summary>
         [HttpGet("confirm-email-change")]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]

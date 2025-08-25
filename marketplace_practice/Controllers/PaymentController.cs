@@ -23,6 +23,9 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Оплата заказа
+        /// </summary>
         [HttpPost("process")]
         [Authorize]
         [ValidateModel]

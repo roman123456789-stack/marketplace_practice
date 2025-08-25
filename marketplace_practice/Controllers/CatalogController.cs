@@ -22,6 +22,9 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Добавление новых категорий/подкатегорий
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "MainAdmin")]
         [ValidateModel]
@@ -54,6 +57,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение дерева категорий
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(ICollection<CategoryHierarchyDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -73,11 +79,14 @@ namespace marketplace_practice.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при получении популярных товаров");
+                _logger.LogError(ex, "Ошибка при получении каталога");
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
 
+        /// <summary>
+        /// Получение списка товаров в подкатегории
+        /// </summary>
         [HttpGet("{*categoryPath}")]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -101,7 +110,7 @@ namespace marketplace_practice.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при получении популярных товаров");
+                _logger.LogError(ex, "Ошибка при получении товаров из каталога");
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }

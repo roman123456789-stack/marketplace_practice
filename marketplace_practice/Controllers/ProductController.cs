@@ -27,6 +27,9 @@ namespace marketplace_practice.Controllers
             _pdfService = pdfService;
         }
 
+        /// <summary>
+        /// Создание товара
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateModel]
@@ -92,6 +95,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение данных конкретного товара
+        /// </summary>
         [HttpGet("{productId}")]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -119,6 +125,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение списка товаров пользователя
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -146,6 +155,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Изменение данных товара
+        /// </summary>
         [HttpPatch("{productId}")]
         [Authorize(Roles = "Admin")]
         [ValidateModel]
@@ -192,6 +204,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Удаление товара
+        /// </summary>
         [HttpDelete("{productId}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -261,8 +276,8 @@ namespace marketplace_practice.Controllers
                 return StatusCode(500, new { error = "Ошибка генерации PDF", details = ex.Message });
             }
         }
-        
-       [HttpPost("upload")]
+
+        [HttpPost("upload")]
         public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
         {
             if (images == null || images.Count == 0)
@@ -278,7 +293,7 @@ namespace marketplace_practice.Controllers
 
                 return Ok(new
                 {
-                    urls,               
+                    urls,
                 });
             }
             catch (ArgumentException ex)

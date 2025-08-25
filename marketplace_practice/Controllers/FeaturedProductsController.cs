@@ -21,6 +21,9 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Получение списка популярных товаров
+        /// </summary>
         [HttpGet("popular")]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -45,6 +48,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение списка новинок
+        /// </summary>
         [HttpGet("new")]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

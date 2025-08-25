@@ -1,5 +1,6 @@
 ﻿using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
+using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,18 +13,23 @@ namespace marketplace_practice.Controllers
     public class FavoriteProductController : ControllerBase
     {
         private readonly IFavoriteProductService _favoriteProductService;
+        private readonly IFavoriteCookieService _favoriteCookieService;
         private readonly ILogger<FavoriteProductController> _logger;
 
         public FavoriteProductController(
             IFavoriteProductService favoriteProductService,
+            IFavoriteCookieService favoriteCookieService,
             ILogger<FavoriteProductController> logger)
         {
             _favoriteProductService = favoriteProductService;
+            _favoriteCookieService = favoriteCookieService;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Добавление товара в избранное
+        /// </summary>
         [HttpPost]
-        [Authorize]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -32,18 +38,16 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _favoriteProductService.AddToFavoritesAsync(User, productId);
-
-                if (result.IsSuccess)
+                if (User.Identity.IsAuthenticated)
                 {
-                    _logger.LogInformation("Товар успешно добавлен в избранное");
-                    return StatusCode(201);
+                    var result = await _favoriteProductService.AddToFavoritesAsync(User, productId);
+                    return HandleAddFavoriteResult(result);
                 }
-
-                _logger.LogWarning("Ошибка при добавлении товара в избранное: {Errors}",
-                    string.Join(", ", result.Errors));
-
-                return HandleFailure(result.Errors);
+                else
+                {
+                    var result = await _favoriteCookieService.AddToFavoritesCookieAsync(productId, HttpContext);
+                    return HandleAddFavoriteResult(result);
+                }
             }
             catch (Exception ex)
             {
@@ -52,6 +56,23 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        private IActionResult HandleAddFavoriteResult(Result<string> result)
+        {
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Товар успешно добавлен в избранное");
+                return StatusCode(201);
+            }
+
+            _logger.LogWarning("Ошибка при добавлении товара в избранное: {Errors}",
+                string.Join(", ", result.Errors));
+
+            return HandleFailure(result.Errors);
+        }
+
+        /// <summary>
+        /// Получение списка товаров из избранного
+        /// </summary>
         [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
@@ -80,6 +101,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Удаление товара из избранного
+        /// </summary>
         [HttpDelete("{productId}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -93,18 +117,26 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _favoriteProductService.RemoveFromFavoritesAsync(User, productId);
-
-                if (result.IsSuccess)
+                if (User.Identity.IsAuthenticated)
                 {
-                    _logger.LogInformation("Товар c ID = '{ProductId}' успешно удалён из избранных", productId);
+                    var result = await _favoriteProductService.RemoveFromFavoritesAsync(User, productId);
+
+                    if (result.IsSuccess)
+                    {
+                        _logger.LogInformation("Товар c ID = '{ProductId}' успешно удалён из избранных", productId);
+                        return NoContent();
+                    }
+
+                    _logger.LogWarning("Ошибка при удалении из избранных товара с ID = '{ProductId}': {Errors}",
+                        productId, string.Join(", ", result.Errors));
+
+                    return HandleFailure(result.Errors);
+                }
+                else
+                {
+                    await _favoriteCookieService.RemoveFromFavoritesCookieAsync(productId, HttpContext);
                     return NoContent();
                 }
-
-                _logger.LogWarning("Ошибка при удалении из избранных товара с ID = '{ProductId}': {Errors}",
-                    productId, string.Join(", ", result.Errors));
-
-                return HandleFailure(result.Errors);
             }
             catch (Exception ex)
             {

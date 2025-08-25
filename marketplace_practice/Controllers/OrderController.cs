@@ -22,6 +22,9 @@ namespace marketplace_practice.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Создание заказа
+        /// </summary>
         [HttpPost]
         [Authorize]
         [ValidateModel]
@@ -60,6 +63,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Просмотр данных конкретного заказа
+        /// </summary>
         [HttpGet("{orderId}")]
         [Authorize]
         [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
@@ -88,6 +94,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение списка заказов пользователя
+        /// </summary>
         [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(ICollection<OrderDto>), StatusCodes.Status200OK)]
@@ -116,6 +125,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Изменение состава заказа
+        /// </summary>
         [HttpPatch("{orderId}")]
         [Authorize]
         [ValidateModel]
@@ -158,6 +170,9 @@ namespace marketplace_practice.Controllers
             }
         }
 
+        /// <summary>
+        /// Удаление заказа
+        /// </summary>
         [HttpDelete("{orderId}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

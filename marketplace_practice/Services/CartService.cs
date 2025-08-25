@@ -198,10 +198,10 @@ namespace marketplace_practice.Services
 
         public async Task<Result<string>> DeleteCartItemAsync(
             ClaimsPrincipal userPrincipal,
-            string cartItemId)
+            string productId)
         {
             // Валидация параметров
-            if (!long.TryParse(cartItemId, out var id))
+            if (!long.TryParse(productId, out var id))
                 return Result<string>.Failure("Неверный формат ID элемента корзины'");
 
             // Получение пользователя из ClaimsPrincipal
@@ -217,7 +217,7 @@ namespace marketplace_practice.Services
                 var cartItem = await _appDbContext.CartItems
                     .Include(ci => ci.Cart)
                     .FirstOrDefaultAsync(ci =>
-                        ci.Id == id);
+                        ci.ProductId == id);
 
                 if (cartItem == null)
                 {
