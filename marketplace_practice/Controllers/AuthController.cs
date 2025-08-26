@@ -466,5 +466,21 @@ namespace marketplace_practice.Controllers
                 return StatusCode(500, new { Error = "Внутренняя ошибка сервера" });
             }
         }
+
+
+        /// <summary>
+        /// Проверка валидности access-токена
+        /// </summary>
+        [HttpGet("test-login")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public IActionResult TestLogin()
+        {
+            return Ok(new { Message = "Access-токен корректен"});
+
+            // 1) В случае, если acces-токен протух, но refresh еще жив, новый придёт в заголовке "X-New-Access-Token"
+            // 2) В случае, если и acces, и refresh-токены умерли, но вернется 401
+        }
     }
 }
