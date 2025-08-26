@@ -140,6 +140,83 @@ namespace marketplace_practice.Services
             }
         }
 
+        public async Task<Result<ICollection<ProductDto>>> GetFavoritesFromCookieAsync(
+            List<string> favoriteProductIds,
+            List<string> cartProductIds = null)
+        {
+            try
+            {
+                if (favoriteProductIds == null || !favoriteProductIds.Any())
+                {
+                    return Result<ICollection<ProductDto>>.Success(new List<ProductDto>());
+                }
+
+                // Конвертация string IDs в long
+                var favoriteIds = favoriteProductIds
+                    .Select(id => long.TryParse(id, out var productId) ? productId : (long?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id.Value)
+                    .ToList();
+
+                var cartIds = cartProductIds?
+                    .Select(id => long.TryParse(id, out var productId) ? productId : (long?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id.Value)
+                    .ToList() ?? new List<long>();
+
+                if (!favoriteIds.Any())
+                {
+                    return Result<ICollection<ProductDto>>.Success(new List<ProductDto>());
+                }
+
+                // Загрузка информации о товарах
+                var favoriteProducts = await _appDbContext.Products
+                    .AsNoTracking()
+                    .Where(p => favoriteIds.Contains(p.Id) && p.IsActive)
+                    .Include(p => p.User)
+                    .Include(p => p.ProductImages)
+                    .Include(p => p.Categories)
+                    .Select(p => new ProductDto
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        PromotionalPrice = p.PromotionalPrice,
+                        Size = p.Size,
+                        StockQuantity = p.StockQuantity,
+                        Owner = new UserBriefInfoDto
+                        {
+                            Id = p.User.Id,
+                            FirstName = p.User.FirstName,
+                            LastName = p.User.LastName,
+                            Email = p.User.Email!,
+                            PhoneNumber = p.User.PhoneNumber
+                        },
+                        Currency = p.Currency.GetDisplayName(),
+                        IsActive = p.IsActive,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt,
+                        ProductImages = p.ProductImages
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList(),
+                        IsFavirite = true,
+                        IsAdded = cartIds.Contains(p.Id)
+                    })
+                    .ToListAsync();
+
+                return Result<ICollection<ProductDto>>.Success(favoriteProducts);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
         public async Task<Result<string>> RemoveFromFavoritesAsync(ClaimsPrincipal userPrincipal, string productId)
         {
             if (!long.TryParse(productId, out var id))

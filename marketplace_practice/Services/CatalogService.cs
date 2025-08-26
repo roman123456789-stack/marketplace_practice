@@ -6,6 +6,7 @@ using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -14,10 +15,17 @@ namespace marketplace_practice.Services
     public class CatalogService : ICatalogService
     {
         private readonly AppDbContext _appDbContext;
+        private readonly IFavoriteCookieService _favoriteCookieService;
+        private readonly ICartCookieService _cartCookieService;
 
-        public CatalogService(AppDbContext appDbContext)
+        public CatalogService(
+            AppDbContext appDbContext,
+            IFavoriteCookieService favoriteCookieService,
+            ICartCookieService cartCookieService)
         {
             _appDbContext = appDbContext;
+            _favoriteCookieService = favoriteCookieService;
+            _cartCookieService = cartCookieService;
         }
 
         public async Task<Result<CategoryHierarchyDto>> AddCategoryAsync(CategoryHierarchyDto categoryHierarchy)
@@ -228,6 +236,7 @@ namespace marketplace_practice.Services
 
         public async Task<Result<ICollection<ProductDto>>> GetProductsFromCategory(
             ClaimsPrincipal userPrincipal,
+            HttpContext httpContext,
             string[] pathSegments)
         {
             // Валидация входных параметров
@@ -289,15 +298,44 @@ namespace marketplace_practice.Services
                             {
                                 Url = pi.Url,
                                 IsMain = pi.IsMain
-                            }).ToList(),
-                        IsFavirite = currentUserId.HasValue
-                            ? p.FavoriteProducts.Any(fp => fp.UserId == currentUserId.Value)
-                            : false,
-                        IsAdded = currentUserId.HasValue
-                            ? p.CartItems.Any(ci => ci.Cart.UserId == currentUserId.Value)
-                            : false
+                            }).ToList()
                     })
                     .ToListAsync();
+
+                // Устанавливаем флаги в зависимости от авторизации
+                if (userPrincipal.Identity.IsAuthenticated)
+                {
+                    // Для авторизованных - из БД
+                    var currentuserId = long.Parse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier));
+
+                    var favoriteProductIds = await _appDbContext.FavoriteProducts
+                        .Where(fp => fp.UserId == currentuserId)
+                        .Select(fp => fp.ProductId)
+                        .ToListAsync();
+
+                    var cartProductIds = await _appDbContext.CartItems
+                        .Where(ci => ci.Cart.UserId == currentuserId)
+                        .Select(ci => ci.ProductId)
+                        .ToListAsync();
+
+                    foreach (var product in products)
+                    {
+                        product.IsFavirite = favoriteProductIds.Contains(product.Id);
+                        product.IsAdded = cartProductIds.Contains(product.Id);
+                    }
+                }
+                else
+                {
+                    // Для неавторизованных - из куки
+                    var favoriteIds = (await _favoriteCookieService.GetFavoritesFromCookieAsync(httpContext)).Value;
+                    var cartItems = (await _cartCookieService.GetCartFromCookieAsync(httpContext)).Value;
+
+                    foreach (var product in products)
+                    {
+                        product.IsFavirite = favoriteIds?.Contains(product.Id.ToString()) == true;
+                        product.IsAdded = cartItems?.Any(ci => ci.ProductId == product.Id) == true;
+                    }
+                }
 
                 return Result<ICollection<ProductDto>>.Success(products);
             }

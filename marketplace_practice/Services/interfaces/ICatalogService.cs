@@ -14,6 +14,7 @@ namespace marketplace_practice.Services.interfaces
 
         public Task<Result<ICollection<ProductDto>>> GetProductsFromCategory(
             ClaimsPrincipal userPrincipal,
+            HttpContext httpContext,
             string[] pathSegments);
     }
 }

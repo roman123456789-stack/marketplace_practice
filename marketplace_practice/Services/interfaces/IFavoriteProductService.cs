@@ -12,6 +12,10 @@ namespace marketplace_practice.Services.interfaces
             ClaimsPrincipal userPrincipal,
             string? targetUserId = null);
 
+        public Task<Result<ICollection<ProductDto>>> GetFavoritesFromCookieAsync(
+            List<string> favoriteProductIds,
+            List<string> cartProductIds = null);
+
         public Task<Result<string>> RemoveFromFavoritesAsync(ClaimsPrincipal userPrincipal, string productId);
     }
 }

@@ -1,6 +1,5 @@
 ﻿using marketplace_practice.Controllers.dto.Products;
 using marketplace_practice.Middlewares;
-using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
@@ -109,7 +108,7 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _productService.GetProductByIdAsync(User, productId);
+                var result = await _productService.GetProductByIdAsync(User, productId, HttpContext);
 
                 if (result.IsSuccess)
                 {
@@ -126,9 +125,10 @@ namespace marketplace_practice.Controllers
         }
 
         /// <summary>
-        /// Получение списка товаров пользователя
+        /// Получение списка товаров конкретного пользователя
         /// </summary>
         [HttpGet]
+        [Authorize]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

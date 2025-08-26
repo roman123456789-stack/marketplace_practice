@@ -15,11 +15,19 @@ namespace marketplace_practice.Services
     {
         private readonly AppDbContext _appDbContext;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IFavoriteCookieService _favoriteCookieService;
+        private readonly ICartCookieService _cartCookieService;
 
-        public ProductService(AppDbContext appDbContext, IFileUploadService fileUploadService)
+        public ProductService(
+            AppDbContext appDbContext, 
+            IFileUploadService fileUploadService,
+            IFavoriteCookieService favoriteCookieService,
+            ICartCookieService cartCookieService)
         {
             _appDbContext = appDbContext;
             _fileUploadService = fileUploadService;
+            _favoriteCookieService = favoriteCookieService;
+            _cartCookieService = cartCookieService;
         }
 
         public async Task<Result<ProductDto>> CreateProductAsync(
@@ -195,7 +203,10 @@ namespace marketplace_practice.Services
             }
         }
 
-        public async Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId)
+        public async Task<Result<ProductDto>> GetProductByIdAsync(
+            ClaimsPrincipal userPrincipal, 
+            string productId, 
+            HttpContext httpContext)
         {
             // Валидация ID товара
             if (!long.TryParse(productId, out var id))
@@ -203,18 +214,9 @@ namespace marketplace_practice.Services
                 return Result<ProductDto>.Failure("Неверный формат ID товара");
             }
 
-            long? currentUserId = null;
-
-            // Получение ID пользователя только если он авторизован
-            var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId) && long.TryParse(userId, out var parsedUserId))
-            {
-                currentUserId = parsedUserId;
-            }
-
             try
             {
-                // Оптимизированный запрос с проекцией в DTO
+                // Получаем информацию о товаре
                 var productDto = await _appDbContext.Products
                     .AsNoTracking()
                     .Where(p => p.Id == id && p.IsActive)
@@ -240,24 +242,38 @@ namespace marketplace_practice.Services
                             PhoneNumber = p.User.PhoneNumber
                         },
                         ProductImages = p.ProductImages
-                        .OrderByDescending(pi => pi.IsMain)
-                        .Select(pi => new ProductImageDto
-                        {
-                            Url = pi.Url,
-                            IsMain = pi.IsMain
-                        }).ToList(),
-                        IsFavirite = currentUserId.HasValue
-                            ? p.FavoriteProducts.Any(fp => fp.UserId == currentUserId.Value)
-                            : false,
-                        IsAdded = currentUserId.HasValue
-                            ? p.CartItems.Any(ci => ci.Cart.UserId == currentUserId.Value)
-                            : false
+                            .OrderByDescending(pi => pi.IsMain)
+                            .Select(pi => new ProductImageDto
+                            {
+                                Url = pi.Url,
+                                IsMain = pi.IsMain
+                            }).ToList()
                     })
                     .FirstOrDefaultAsync();
 
                 if (productDto == null)
                 {
                     return Result<ProductDto>.Failure("Товар не найден");
+                }
+
+                // Установка флагов в зависимости от авторизации
+                if (userPrincipal.Identity.IsAuthenticated)
+                {
+                    // Для авторизованных - из БД
+                    var userId = long.Parse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier));
+                    productDto.IsFavirite = await _appDbContext.FavoriteProducts
+                        .AnyAsync(fp => fp.UserId == userId && fp.ProductId == id);
+                    productDto.IsAdded = await _appDbContext.CartItems
+                        .AnyAsync(ci => ci.Cart.UserId == userId && ci.ProductId == id);
+                }
+                else
+                {
+                    // Для неавторизованных - из куки
+                    var favoriteIds = (await _favoriteCookieService.GetFavoritesFromCookieAsync(httpContext)).Value;
+                    var cartItems = (await _cartCookieService.GetCartFromCookieAsync(httpContext)).Value;
+
+                    productDto.IsFavirite = favoriteIds?.Contains(productId) == true;
+                    productDto.IsAdded = cartItems?.Any(ci => ci.ProductId.ToString() == productId) == true;
                 }
 
                 return Result<ProductDto>.Success(productDto);

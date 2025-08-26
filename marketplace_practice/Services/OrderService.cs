@@ -141,13 +141,15 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
+                                PromotionalPrice = oi.CartItem.Product.PromotionalPrice,
                                 Currency = oi.CartItem.Product.Currency.GetDisplayName(),
                                 ProductImages = oi.CartItem.Product.ProductImages
                                 .Select(pi => new ProductImageDto
                                 {
                                     Url = pi.Url,
                                     IsMain = pi.IsMain
-                                }).ToList()
+                                }).ToList(),
+                                CreatedAt = oi.CartItem.Product.CreatedAt
                             }
                         }).ToList(),
                         OrderDetail = new OrderDetailDto
@@ -232,13 +234,15 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
+                                PromotionalPrice = oi.CartItem.Product.PromotionalPrice,
                                 Currency = oi.CartItem.Product.Currency.GetDisplayName(),
                                 ProductImages = oi.CartItem.Product.ProductImages
                                 .Select(pi => new ProductImageDto
                                 {
                                     Url = pi.Url,
                                     IsMain = pi.IsMain
-                                }).ToList()
+                                }).ToList(),
+                                CreatedAt = oi.CartItem.Product.CreatedAt
                             }
                         }).ToList(),
                         OrderDetail = new OrderDetailDto
@@ -362,13 +366,15 @@ namespace marketplace_practice.Services
                                 UserId = oi.CartItem.Product.UserId,
                                 Name = oi.CartItem.Product.Name,
                                 Price = oi.CartItem.Product.Price,
+                                PromotionalPrice = oi.CartItem.Product.PromotionalPrice,
                                 Currency = oi.CartItem.Product.Currency.GetDisplayName(),
                                 ProductImages = oi.CartItem.Product.ProductImages
                                     .Select(pi => new ProductImageDto
                                     {
                                         Url = pi.Url,
                                         IsMain = pi.IsMain
-                                    }).ToList()
+                                    }).ToList(),
+                                CreatedAt = oi.CartItem.Product.CreatedAt
                             }
                         }).ToList(),
                         OrderDetail = new OrderDetailDto

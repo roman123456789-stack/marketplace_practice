@@ -15,6 +15,10 @@ namespace marketplace_practice.Services.interfaces
             ClaimsPrincipal userPrincipal,
             string? targetUserId = null);
 
+        public Task<Result<ICollection<CartItemDto>>> GetCartFromCookieAsync(
+            List<CartCookieItem> cartItemsResult,
+            List<string> favoriteProductIds = null);
+
         public Task<Result<string>> DeleteCartItemAsync(
             ClaimsPrincipal userPrincipal,
             string productId);

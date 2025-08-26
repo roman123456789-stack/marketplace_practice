@@ -1,7 +1,6 @@
 ﻿using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace marketplace_practice.Controllers
@@ -14,15 +13,18 @@ namespace marketplace_practice.Controllers
     {
         private readonly IFavoriteProductService _favoriteProductService;
         private readonly IFavoriteCookieService _favoriteCookieService;
+        private readonly ICartCookieService _cartCookieService;
         private readonly ILogger<FavoriteProductController> _logger;
 
         public FavoriteProductController(
             IFavoriteProductService favoriteProductService,
             IFavoriteCookieService favoriteCookieService,
+            ICartCookieService cartCookieService,
             ILogger<FavoriteProductController> logger)
         {
             _favoriteProductService = favoriteProductService;
             _favoriteCookieService = favoriteCookieService;
+            _cartCookieService = cartCookieService;
             _logger = logger;
         }
 
@@ -74,7 +76,6 @@ namespace marketplace_practice.Controllers
         /// Получение списка товаров из избранного
         /// </summary>
         [HttpGet]
-        [Authorize]
         [ProducesResponseType(typeof(ICollection<ProductDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -85,14 +86,39 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _favoriteProductService.GetFavoritesAsync(User, userId);
-
-                if (result.IsSuccess)
+                if (User.Identity.IsAuthenticated)
                 {
-                    return Ok(result.Value);
-                }
+                    var result = await _favoriteProductService.GetFavoritesAsync(User, userId);
 
-                return HandleFailure(result.Errors);
+                    if (result.IsSuccess)
+                    {
+                        return Ok(result.Value);
+                    }
+
+                    return HandleFailure(result.Errors);
+                }
+                else
+                {
+                    var favoriteItems = await _favoriteCookieService.GetFavoritesFromCookieAsync(HttpContext);
+
+                    if (!favoriteItems.IsSuccess || !favoriteItems.Value.Any())
+                    {
+                        return Ok(Enumerable.Empty<ProductDto>());
+                    }
+
+                    var cartProductIds = (await _cartCookieService.GetCartFromCookieAsync(HttpContext))
+                        .Value?
+                        .Select(ci => ci.ProductId.ToString())
+                        .ToList() ?? new List<string>();
+
+                    var favoriteResult = await _favoriteProductService.GetFavoritesFromCookieAsync(
+                        favoriteItems.Value,
+                        cartProductIds);
+
+                    return favoriteResult.IsSuccess
+                        ? Ok(favoriteResult.Value)
+                        : HandleFailure(favoriteResult.Errors);
+                }
             }
             catch (Exception ex)
             {
@@ -105,7 +131,6 @@ namespace marketplace_practice.Controllers
         /// Удаление товара из избранного
         /// </summary>
         [HttpDelete("{productId}")]
-        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

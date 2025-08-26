@@ -1,8 +1,9 @@
 ﻿using marketplace_practice.Middlewares;
+using marketplace_practice.Services;
 using marketplace_practice.Services.dto.Carts;
+using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace marketplace_practice.Controllers
@@ -15,16 +16,19 @@ namespace marketplace_practice.Controllers
     {
         private readonly ICartService _cartService;
         private readonly ICartCookieService _cartCookieService;
+        private readonly IFavoriteCookieService _favoriteCookieService;
         private readonly ILogger<CartController> _logger;
 
         public CartController(
             ICartService cartService,
             ICartCookieService cartCookieService,
+            IFavoriteCookieService favoriteCookieService,
             ILogger<CartController> logger)
         {
             _cartService = cartService;
-            _logger = logger;
             _cartCookieService = cartCookieService;
+            _favoriteCookieService = favoriteCookieService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -46,13 +50,13 @@ namespace marketplace_practice.Controllers
                 {
                     // Для авторизованных - сохранение в БД
                     var result = await _cartService.AddCartItemAsync(User, productId, quantity);
-                    return HandleCartResult(result);
+                    return HandleAddCartItemResult(result);
                 }
                 else
                 {
                     // Для неавторизованных - сохранение в куки
                     var result = await _cartCookieService.AddToCartCookieAsync(productId, quantity, HttpContext);
-                    return HandleCartResult(result);
+                    return HandleAddCartItemResult(result);
                 }
             }
             catch (Exception ex)
@@ -62,7 +66,7 @@ namespace marketplace_practice.Controllers
             }
         }
 
-        private IActionResult HandleCartResult(Result<string> result)
+        private IActionResult HandleAddCartItemResult(Result<string> result)
         {
             if (result.IsSuccess)
             {
@@ -76,12 +80,10 @@ namespace marketplace_practice.Controllers
             return HandleFailure(result.Errors);
         }
 
-
         /// <summary>
         /// Получение списка товаров из корзины
         /// </summary>
         [HttpGet]
-        [Authorize]
         [ProducesResponseType(typeof(ICollection<CartItemDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -92,14 +94,35 @@ namespace marketplace_practice.Controllers
         {
             try
             {
-                var result = await _cartService.GetCartAsync(User, userId);
-
-                if (result.IsSuccess)
+                if (User.Identity.IsAuthenticated)
                 {
-                    return Ok(new { result.Value });
-                }
+                    var result = await _cartService.GetCartAsync(User, userId);
 
-                return HandleFailure(result.Errors);
+                    if (result.IsSuccess)
+                    {
+                        return Ok(new { result.Value });
+                    }
+
+                    return HandleFailure(result.Errors);
+                }
+                else
+                {
+                    var cartItems = await _cartCookieService.GetCartFromCookieAsync(HttpContext);
+
+                    if (!cartItems.IsSuccess || !cartItems.Value.Any())
+                    {
+                        return Ok(Enumerable.Empty<CartItemDto>());
+                    }
+
+                    var favoriteIdsResult = await _favoriteCookieService.GetFavoritesFromCookieAsync(HttpContext);
+                    var favoriteIds = favoriteIdsResult.IsSuccess ? favoriteIdsResult.Value : new List<string>();
+
+                    var cartResult = await _cartService.GetCartFromCookieAsync(cartItems.Value, favoriteIds);
+
+                    return cartResult.IsSuccess
+                        ? Ok(cartResult.Value)
+                        : HandleFailure(cartResult.Errors);
+                }
             }
             catch (Exception ex)
             {
@@ -111,8 +134,7 @@ namespace marketplace_practice.Controllers
         /// <summary>
         /// Удаление товара из корзины
         /// </summary>
-        [HttpDelete("{cartItemId}")]
-        [Authorize]
+        [HttpDelete("{productId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

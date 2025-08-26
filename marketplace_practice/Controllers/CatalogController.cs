@@ -99,7 +99,7 @@ namespace marketplace_practice.Controllers
 
             try
             {
-                var result = await _catalogService.GetProductsFromCategory(User, pathSegments);
+                var result = await _catalogService.GetProductsFromCategory(User, HttpContext, pathSegments);
 
                 if (result.IsSuccess)
                 {

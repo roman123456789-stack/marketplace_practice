@@ -20,7 +20,10 @@ namespace marketplace_practice.Services.interfaces
             List<IFormFile>? images,
             int stockQuantity = 0);
 
-        public Task<Result<ProductDto>> GetProductByIdAsync(ClaimsPrincipal userPrincipal, string productId);
+        public Task<Result<ProductDto>> GetProductByIdAsync(
+            ClaimsPrincipal userPrincipal,
+            string productId,
+            HttpContext httpContext);
 
         public Task<Result<ProductDto>> UpdateProductAsync(
             ClaimsPrincipal userPrincipal,

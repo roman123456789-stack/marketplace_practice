@@ -175,13 +175,17 @@ namespace marketplace_practice.Services
                             UserId = ci.Product.UserId,
                             Name = ci.Product.Name,
                             Price = ci.Product.Price,
+                            PromotionalPrice = ci.Product.PromotionalPrice,
                             Currency = ci.Product.Currency.GetDisplayName(),
                             ProductImages = ci.Product.ProductImages
                             .Select(pi => new ProductImageDto
                             {
                                 Url = pi.Url,
                                 IsMain = pi.IsMain
-                            }).ToList()
+                            }).ToList(),
+                            CreatedAt = ci.Product.CreatedAt,
+                            IsFavirite = ci.Product.FavoriteProducts.Any(fp => fp.UserId == currentUserId),
+                            IsAdded = true
                         },
                         CreatedAt = ci.CreatedAt,
                         UpdatedAt = ci.UpdatedAt
@@ -193,6 +197,78 @@ namespace marketplace_practice.Services
             catch
             {
                 throw;
+            }
+        }
+
+        public async Task<Result<ICollection<CartItemDto>>> GetCartFromCookieAsync(
+            List<CartCookieItem> cartItemsResult,
+            List<string> favoriteProductIds = null)
+        {
+            try
+            {
+                if (cartItemsResult == null || !cartItemsResult.Any())
+                {
+                    return Result<ICollection<CartItemDto>>.Success(new List<CartItemDto>());
+                }
+
+                // Получение ID товаров из корзины
+                var productIds = cartItemsResult.Select(x => x.ProductId).ToList();
+
+                // Конвертируем favoriteProductIds в long
+                var favoriteIds = favoriteProductIds?
+                    .Select(id => long.TryParse(id, out var productId) ? productId : (long?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id.Value)
+                    .ToList() ?? new List<long>();
+
+                // Загрузка информации о товарах
+                var products = await _appDbContext.Products
+                    .AsNoTracking()
+                    .Where(p => productIds.Contains(p.Id) && p.IsActive)
+                    .Include(p => p.ProductImages)
+                    .Include(p => p.User)
+                    .ToDictionaryAsync(p => p.Id);
+
+                // Создание DTO
+                var cartItems = new List<CartItemDto>();
+
+                foreach (var cookieItem in cartItemsResult)
+                {
+                    if (products.TryGetValue(cookieItem.ProductId, out var product))
+                    {
+                        cartItems.Add(new CartItemDto
+                        {
+                            CartItemId = $"cookie_{cookieItem.ProductId}",
+                            Quantity = cookieItem.Quantity,
+                            productBriefInfo = new ProductBriefInfoDto
+                            {
+                                Id = product.Id,
+                                UserId = product.UserId,
+                                Name = product.Name,
+                                Price = product.Price,
+                                PromotionalPrice = product.PromotionalPrice,
+                                Currency = product.Currency.GetDisplayName(),
+                                ProductImages = product.ProductImages
+                                    .Select(pi => new ProductImageDto
+                                    {
+                                        Url = pi.Url,
+                                        IsMain = pi.IsMain
+                                    })
+                                    .ToList(),
+                                CreatedAt = DateTime.UtcNow,
+                                IsFavirite = favoriteIds.Contains(product.Id),
+                                IsAdded = true
+                            },
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                return Result<ICollection<CartItemDto>>.Success(cartItems);
+            }
+            catch (Exception ex)
+            {
+                return Result<ICollection<CartItemDto>>.Failure($"Ошибка при получении корзины из куки: {ex.Message}");
             }
         }
 
