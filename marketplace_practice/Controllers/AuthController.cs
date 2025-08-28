@@ -89,14 +89,16 @@ namespace marketplace_practice.Controllers
                         warnings.Add("Не удалось перенести товары в избранное");
                     }
 
-                    return Ok(new
-                    {
-                        AccessToken = result.Value.AccessToken.Value,
-                        Message = warnings.Any()
-                            ? "Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему, но возникли проблемы с переносом данных"
-                            : $"Email подтверждён и пользователь с ID = '{userId}' успешно вошёл в систему",
-                        Warnings = warnings
-                    });
+                    //return Ok(new
+                    //{
+                    //    AccessToken = result.Value.AccessToken.Value,
+                    //    Message = warnings.Any()
+                    //        ? "Email подтверждён и пользователь с ID = '{UserId}' вошёл в систему, но возникли проблемы с переносом данных"
+                    //        : $"Email подтверждён и пользователь с ID = '{userId}' успешно вошёл в систему",
+                    //    Warnings = warnings
+                    //});
+
+                    return Redirect("http://localhost:5173/auth/login");
                 }
 
                 _logger.LogWarning("Ошибка подтверждения email пользователя с ID = '{UserId}': {Errors}",
@@ -447,7 +449,8 @@ namespace marketplace_practice.Controllers
                 if (result.IsSuccess)
                 {
                     _logger.LogInformation("Пароль пользователя с ID = '{UserId}' успешно изменён", userId);
-                    return Ok(new { Success = true, Message = "Email успешно изменён" });
+                    //return Ok(new { Success = true, Message = "Email успешно изменён" });
+                    return Redirect("http://localhost:5173/auth/login");
                 }
 
                 _logger.LogWarning("Ошибка при изменении email пользователя с ID = '{UserId}': {Errors}",

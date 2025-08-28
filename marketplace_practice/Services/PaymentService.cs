@@ -122,13 +122,15 @@ namespace marketplace_practice.Services
                     Items = new List<ReceiptItem>()
                 };
 
-                foreach(var orderProduct in orderProducts)
+                foreach (var orderProduct in orderProducts)
                 {
                     receipt.Items.Add(new ReceiptItem
                     {
                         ProductName = orderProduct.Product.Name,
                         Quantity = orderProduct.Quantity,
-                        UnitPrice = orderProduct.Product.Price,
+                        UnitPrice = (orderProduct.Product.PromotionalPrice != null && orderProduct.Product.PromotionalPrice > 0)
+                            ? orderProduct.Product.PromotionalPrice.Value
+                            : orderProduct.Product.Price
                     });
                 }
 
@@ -145,13 +147,13 @@ namespace marketplace_practice.Services
                 var customerEmail = order.User.Email;
                 var customerName = order.User.FirstName;
 
-                //await _emailService.SendPdfReceiptAsync(
-                //    email: customerEmail!,
-                //    firstName: customerName,
-                //    pdfBytes: result.Item2,
-                //    fileName: $"receipt_{payment.Id}.pdf",
-                //    subject: $"Чек по заказу №{order.Id}"
-                //);
+                await _emailService.SendPdfReceiptAsync(
+                    email: customerEmail!,
+                    firstName: customerName,
+                    pdfBytes: result.Item2,
+                    fileName: $"receipt_{payment.Id}.pdf",
+                    subject: $"Чек по заказу №{order.Id}"
+                );
 
                 await transaction.CommitAsync();
 

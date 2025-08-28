@@ -374,7 +374,7 @@ namespace marketplace_practice.Services
             short? size,
             string? currency,
             ICollection<CategoryHierarchyDto>? categoryHierarchies,
-            ICollection<string>? imagesUrl,
+            //ICollection<string>? imagesUrl,
             int? stockQuantity)
         {
             // Валидация ID товара
@@ -430,11 +430,11 @@ namespace marketplace_practice.Services
                     await UpdateProductCategoriesAsync(product, categoryHierarchies);
                 }
 
-                // Обновление изображений (если указаны)
-                if (imagesUrl != null)
-                {
-                    await UpdateProductImagesAsync(product.Id, imagesUrl);
-                }
+                //// Обновление изображений (если указаны)
+                //if (imagesUrl != null)
+                //{
+                //    await UpdateProductImagesAsync(product.Id, imagesUrl);
+                //}
 
                 await _appDbContext.SaveChangesAsync();
 

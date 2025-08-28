@@ -35,7 +35,7 @@ namespace marketplace_practice.Services.interfaces
             short? size,
             string? currency,
             ICollection<CategoryHierarchyDto>? categoryHierarchies,
-            ICollection<string>? imagesUrl,
+            //ICollection<string>? imagesUrl,
             int? stockQuantity);
 
         public Task<Result<string>> DeleteProductAsync(ClaimsPrincipal userPrincipal, string productId);

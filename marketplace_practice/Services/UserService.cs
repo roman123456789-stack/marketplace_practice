@@ -5,6 +5,7 @@ using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using MailKit.Net.Smtp;
 
 namespace marketplace_practice.Services
 {
@@ -15,19 +16,22 @@ namespace marketplace_practice.Services
         private readonly RoleManager<Role> _roleManager;
         private readonly ILoyaltyService _loyaltyService;
         private readonly IAuthService _authService;
+        private readonly IEmailService _emailService;
 
         public UserService(
             AppDbContext appDbContext,
             UserManager<User> userManager,
             RoleManager<Role> roleManager,
             ILoyaltyService loyaltyService,
-            IAuthService authService)
+            IAuthService authService,
+            IEmailService emailService)
         {
             _appDbContext = appDbContext;
             _userManager = userManager;
             _roleManager = roleManager;
             _loyaltyService = loyaltyService;
             _authService = authService;
+            _emailService = emailService;
         }
 
         public async Task<Result<(UserDto, string)>> CreateUserAsync(
@@ -66,8 +70,8 @@ namespace marketplace_practice.Services
                 if (createUserResult.Succeeded)
                 {
                     // Генерация токена подтверждения email и его отправка на почту
-                    //var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    //await _emailService.SendEmailConfirmationAsync(dto.Email, user.FirstName, user.Id, token);
+                    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    await _emailService.SendEmailConfirmationAsync(user.Email, user.FirstName, user.Id, token);
 
                     // Для корректной работы нужно настроить "EmailConfig" в appsettings.json
                 }
@@ -95,6 +99,11 @@ namespace marketplace_practice.Services
 
                 await transaction.CommitAsync();
                 return Result<(UserDto, string)>.Success((new UserDto(user), emailVerificationToken)); // токен потом нужно убрать
+            }
+            catch (SmtpCommandException ex)
+            {
+                await transaction.RollbackAsync();
+                return Result<(UserDto, string)>.Failure($"Ошибка при отправке сообщения на почту: {ex}");
             }
             catch
             {

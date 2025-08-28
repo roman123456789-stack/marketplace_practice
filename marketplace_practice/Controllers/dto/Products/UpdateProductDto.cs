@@ -23,7 +23,7 @@ namespace marketplace_practice.Controllers.dto.Products
 
         public ICollection<CategoryHierarchyDto>? CategoryHierarchy { get; set; }
 
-        public ICollection<string>? ImagesUrl { get; set; }
+        //public ICollection<string>? ImagesUrl { get; set; }
 
         [Range(0, int.MaxValue, ErrorMessage = "Количество не может быть отрицательным")]
         public int? StockQuantity { get; set; }

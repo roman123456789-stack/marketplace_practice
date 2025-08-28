@@ -19,7 +19,7 @@ namespace marketplace_practice.Services
         public async Task SendEmailConfirmationAsync(string email, string firstName, long userId, string token)
         {
             var encodedToken = HttpUtility.UrlEncode(token);
-            var callbackUrl = $"{_emailConfig.BaseUrl}/email-verification/confirm-email?userId={userId.ToString()}&token={encodedToken}";
+            var callbackUrl = $"{_emailConfig.BaseUrl}/auth/confirm-email-and-sign-in?userId={userId.ToString()}&token={encodedToken}";
 
             var message = new EmailMessage
             {
@@ -38,7 +38,7 @@ namespace marketplace_practice.Services
         public async Task SendPasswordResetEmailAsync(string email, string firstName, string token)
         {
             var encodedToken = HttpUtility.UrlEncode(token);
-            var callbackUrl = $"{_emailConfig.BaseUrl}/auth/reset-password-view?email={email}&token={encodedToken}";
+            var callbackUrl = $"http://localhost:5173/auth/newPassword?email={email}&token={encodedToken}";
             // точный callbackUrl ещё не известен
 
             var message = new EmailMessage
@@ -99,6 +99,9 @@ namespace marketplace_practice.Services
 
         public async Task SendEmailAsync(EmailMessage message)
         {
+            if (_emailConfig.UserName == "youraccount@mail.ru")
+                return;
+
             var emailMessage = CreateEmailMessage(message);
             await SendAsync(emailMessage);
         }
@@ -138,6 +141,9 @@ namespace marketplace_practice.Services
 
         public async Task SendEmailWithAttachmentAsync(EmailMessage message, byte[] attachmentData, string fileName, string contentType)
         {
+            if (_emailConfig.UserName == "youraccount@mail.ru")
+                return;
+
             var emailMessage = CreateEmailMessageWithAttachment(message, attachmentData, fileName, contentType);
             await SendAsync(emailMessage);
         }

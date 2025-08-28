@@ -171,7 +171,11 @@ namespace marketplace_practice.Services
 
                 // Вычисление общей суммы заказа
                 orderDto.TotalAmount = orderDto.OrderItems
-                    .Sum(oi => oi.Product.Price * oi.Quantity);
+                    .Sum(oi =>
+                    {
+                        var promotionalPrice = oi.Product.PromotionalPrice.GetValueOrDefault();
+                        return (promotionalPrice > 0 ? promotionalPrice : oi.Product.Price) * oi.Quantity;
+                    });
 
                 return Result<OrderDto>.Success(orderDto);
             }
@@ -290,7 +294,11 @@ namespace marketplace_practice.Services
 
                 // Вычисление общей суммы заказа
                 orderDto.TotalAmount = orderDto.OrderItems
-                    .Sum(oi => oi.Product.Price * oi.Quantity);
+                    .Sum(oi =>
+                    {
+                        var promotionalPrice = oi.Product.PromotionalPrice.GetValueOrDefault();
+                        return (promotionalPrice > 0 ? promotionalPrice : oi.Product.Price) * oi.Quantity;
+                    });
 
                 return Result<OrderDto>.Success(orderDto);
             }
@@ -413,7 +421,11 @@ namespace marketplace_practice.Services
                 foreach (var orderDto in orderDtos)
                 {
                     orderDto.TotalAmount = orderDto.OrderItems
-                        .Sum(oi => oi.Product.Price * oi.Quantity);
+                        .Sum(oi =>
+                        {
+                            var promotionalPrice = oi.Product.PromotionalPrice.GetValueOrDefault();
+                            return (promotionalPrice > 0 ? promotionalPrice : oi.Product.Price) * oi.Quantity;
+                        });
                 }
 
                 return Result<ICollection<OrderDto>>.Success(orderDtos);

@@ -2,7 +2,6 @@
 using marketplace_practice.Middlewares;
 using marketplace_practice.Services.dto.Products;
 using marketplace_practice.Services.interfaces;
-using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -30,7 +29,7 @@ namespace marketplace_practice.Controllers
         /// Создание товара
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "MainAdin, Admin")]
         [ValidateModel]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -159,7 +158,7 @@ namespace marketplace_practice.Controllers
         /// Изменение данных товара
         /// </summary>
         [HttpPatch("{productId}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "MainAdin, Admin")]
         [ValidateModel]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -183,7 +182,7 @@ namespace marketplace_practice.Controllers
                     updateProductDto.Size,
                     updateProductDto.Currency,
                     updateProductDto.CategoryHierarchy,
-                    updateProductDto.ImagesUrl,
+                    //updateProductDto.ImagesUrl,
                     updateProductDto.StockQuantity);
 
                 if (result.IsSuccess)
@@ -208,7 +207,7 @@ namespace marketplace_practice.Controllers
         /// Удаление товара
         /// </summary>
         [HttpDelete("{productId}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "MainAdin, Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -241,70 +240,70 @@ namespace marketplace_practice.Controllers
         }
 
 
-        // Тестовые эндпониты
-        [HttpGet("generate")]
-        public async Task<IActionResult> GeneratePdf()
-        {
-            try
-            {
-                // Создаём тестовые данные
-                var receipt = new ReceiptModel
-                {
-                    ReceiptNumber = "INV-2025-001",
-                    StoreName = "Marketplace Practice",
-                    CustomerName = "Иван Иванов",
-                    IssueDate = DateTime.Now,
-                    Items = new List<ReceiptItem>
-                    {
-                        new() { ProductName = "Ноутбук", Quantity = 1, UnitPrice = 59990 },
-                        new() { ProductName = "Мышь", Quantity = 2, UnitPrice = 1500 }
-                    }
-                };
+        //// Тестовые эндпониты
+        //[HttpGet("generate")]
+        //public async Task<IActionResult> GeneratePdf()
+        //{
+        //    try
+        //    {
+        //        // Создаём тестовые данные
+        //        var receipt = new ReceiptModel
+        //        {
+        //            ReceiptNumber = "INV-2025-001",
+        //            StoreName = "Marketplace Practice",
+        //            CustomerName = "Иван Иванов",
+        //            IssueDate = DateTime.Now,
+        //            Items = new List<ReceiptItem>
+        //            {
+        //                new() { ProductName = "Ноутбук", Quantity = 1, UnitPrice = 59990 },
+        //                new() { ProductName = "Мышь", Quantity = 2, UnitPrice = 1500 }
+        //            }
+        //        };
 
-                // Генерируем и сохраняем PDF
-                var fileUrl = await _pdfService.SaveReceiptAsPdfAsync(receipt, "receipts");
+        //        // Генерируем и сохраняем PDF
+        //        var fileUrl = await _pdfService.SaveReceiptAsPdfAsync(receipt, "receipts");
 
-                // Возвращаем JSON с ссылкой
-                return Ok(new
-                {
-                    message = "PDF успешно сгенерирован",
-                    url = fileUrl  // Например: /uploads/documents/abc123.pdf
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = "Ошибка генерации PDF", details = ex.Message });
-            }
-        }
+        //        // Возвращаем JSON с ссылкой
+        //        return Ok(new
+        //        {
+        //            message = "PDF успешно сгенерирован",
+        //            url = fileUrl  // Например: /uploads/documents/abc123.pdf
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { error = "Ошибка генерации PDF", details = ex.Message });
+        //    }
+        //}
 
-        [HttpPost("upload")]
-        public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
-        {
-            if (images == null || images.Count == 0)
-                return BadRequest("No files uploaded.");
+        //[HttpPost("upload")]
+        //public async Task<IActionResult> UploadImages([FromForm] List<IFormFile> images)
+        //{
+        //    if (images == null || images.Count == 0)
+        //        return BadRequest("No files uploaded.");
 
-            // Опционально: ограничение количества
-            if (images.Count > 10)
-                return BadRequest("Maximum 10 files allowed.");
+        //    // Опционально: ограничение количества
+        //    if (images.Count > 10)
+        //        return BadRequest("Maximum 10 files allowed.");
 
-            try
-            {
-                var urls = await _fileUploadService.SaveFilesAsync(images, "products");
+        //    try
+        //    {
+        //        var urls = await _fileUploadService.SaveFilesAsync(images, "products");
 
-                return Ok(new
-                {
-                    urls,
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "An error occurred while saving the files.");
-            }
-        }
+        //        return Ok(new
+        //        {
+        //            urls,
+        //        });
+        //    }
+        //    catch (ArgumentException ex)
+        //    {
+        //        return BadRequest(ex.Message);
+        //    }
+        //    catch (Exception)
+        //    {
+        //        return StatusCode(500, "An error occurred while saving the files.");
+        //    }
+        //}
 
 
         private IActionResult HandleFailure(IEnumerable<string> errors)

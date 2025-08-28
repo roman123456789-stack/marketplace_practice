@@ -1,5 +1,7 @@
-﻿using marketplace_practice.Models;
+﻿using MailKit.Net.Smtp;
+using marketplace_practice.Models;
 using marketplace_practice.Services.dto.Auth;
+using marketplace_practice.Services.dto.Users;
 using marketplace_practice.Services.interfaces;
 using marketplace_practice.Services.service_models;
 using Microsoft.AspNetCore.Identity;
@@ -247,9 +249,13 @@ namespace marketplace_practice.Services
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
                 // Отправка email
-                // await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
+                await _emailService.SendPasswordResetEmailAsync(email, user.FirstName, token);
 
                 return Result<string>.Success(token);
+            }
+            catch (SmtpCommandException ex)
+            {
+                return Result<string>.Failure($"Ошибка при отправке сообщения на почту: {ex}");
             }
             catch
             {
@@ -307,9 +313,13 @@ namespace marketplace_practice.Services
                 var token = await _userManager.GenerateChangeEmailTokenAsync(user, newEmail);
 
                 // Отправка письма на новый email
-                // await _emailService.SendEmailChangeConfirmationAsync(newEmail, user.FirstName, user.Id, token);
+                await _emailService.SendEmailChangeConfirmationAsync(newEmail, user.FirstName, user.Id, token);
 
                 return Result<string>.Success(token);
+            }
+            catch (SmtpCommandException ex)
+            {
+                return Result<string>.Failure($"Ошибка при отправке сообщения на почту: {ex}");
             }
             catch
             {
